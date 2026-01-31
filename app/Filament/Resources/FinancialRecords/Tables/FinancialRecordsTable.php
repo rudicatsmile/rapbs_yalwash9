@@ -12,6 +12,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Filament\Notifications\Notification;
+use App\Models\FinancialRecord;
 
 class FinancialRecordsTable
 {
@@ -68,8 +72,25 @@ class FinancialRecordsTable
                     ->modalHeading('Duplicate Record')
                     ->modalDescription('Are you sure you want to duplicate this record? This will create a new entry with the same values.')
                     ->modalSubmitActionLabel('Yes, Duplicate')
-                    ->beforeReplicaSaved(function ($replica) {
-                        $replica->status = true;
+                    ->action(function (FinancialRecord $record) {
+                        DB::transaction(function () use ($record) {
+                            $replica = $record->replicate();
+                            $replica->status = true;
+                            $replica->save();
+
+                            foreach ($record->expenseItems as $item) {
+                                $newItem = $item->replicate();
+                                $newItem->financial_record_id = $replica->id;
+                                $newItem->save();
+                            }
+
+                            Log::info("Replicated FinancialRecord {$record->id} to {$replica->id} with items.");
+
+                            Notification::make()
+                                ->title('Record Duplicated')
+                                ->success()
+                                ->send();
+                        });
                     })
                     ->iconButton() // Render as icon button
                     ->tooltip('Duplicate Record'), // Add tooltip
@@ -96,7 +117,7 @@ class FinancialRecordsTable
                         ->action(function (Collection $records) {
                             // Backend authorization check
                             if (! auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])) {
-                                \Filament\Notifications\Notification::make()
+                                Notification::make()
                                     ->title('Access Denied')
                                     ->body('You do not have permission to perform this action.')
                                     ->danger()
@@ -104,11 +125,26 @@ class FinancialRecordsTable
                                 return;
                             }
 
-                            foreach ($records as $record) {
-                                $newRecord = $record->replicate();
-                                $newRecord->status = true;
-                                $newRecord->save();
-                            }
+                            DB::transaction(function () use ($records) {
+                                foreach ($records as $record) {
+                                    $newRecord = $record->replicate();
+                                    $newRecord->status = true;
+                                    $newRecord->save();
+
+                                    foreach ($record->expenseItems as $item) {
+                                        $newItem = $item->replicate();
+                                        $newItem->financial_record_id = $newRecord->id;
+                                        $newItem->save();
+                                    }
+
+                                    Log::info("Bulk Replicated FinancialRecord {$record->id} to {$newRecord->id} with items.");
+                                }
+                            });
+
+                            Notification::make()
+                                ->title('Records Duplicated')
+                                ->success()
+                                ->send();
                         })
                         ->deselectRecordsAfterCompletion(),
                 ])
