@@ -67,10 +67,18 @@ class FinancialRecordPolicy
     }
 
     /**
-     * Determine whether the user can permanently delete the model.
+     * Determine whether the user can force delete the model.
      */
     public function forceDelete(User $user, FinancialRecord $financialRecord): bool
     {
         return $user->can('ForceDelete:FinancialRecord');
+    }
+
+    /**
+     * Determine whether the user can replicate the model.
+     */
+    public function replicate(User $user, FinancialRecord $financialRecord): bool
+    {
+        return $user->can('Create:FinancialRecord');
     }
 }
