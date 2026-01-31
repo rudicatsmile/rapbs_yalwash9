@@ -1,0 +1,73 @@
+# Panduan Penggunaan Modul Keuangan
+
+Modul ini dirancang untuk membantu Anda mencatat rencana pemasukan dan pengeluaran dengan sistem histori yang terstruktur.
+
+## Fitur Utama
+
+1.  **Rencana Pemasukan**
+    - Input jumlah pemasukan.
+    - Input persentase alokasi.
+    - Perhitungan otomatis nilai fix pemasukan.
+
+2.  **Rencana Pengeluaran**
+    - Tambah item pengeluaran tanpa batas.
+    - Perhitungan otomatis total pengeluaran.
+
+3.  **Histori & Laporan**
+    - Melihat daftar riwayat keuangan.
+    - Menghitung saldo akhir otomatis.
+
+## Cara Menggunakan
+
+### 1. Menambah Data Baru
+
+1.  Buka menu **RAPB Sekolah**.
+2.  Klik tombol **New RAPB Sekolah**.
+3.  Isi **Header**:
+    - **Departemen**: Pilih departemen.
+    - **Tanggal**: Pilih tanggal pencatatan.
+    - **Nama History**: Beri nama yang mudah diingat (contoh: "Budget Januari 2026").
+4.  Isi **Rencana Pemasukan**:
+    - Masukkan **Pemasukan (Rp)**.
+    - Masukkan **Persentase (%)**.
+    - Kolom **Fix** akan terisi otomatis.
+5.  Isi **Rencana Pengeluaran**:
+    - Klik **Tambah Pengeluaran**.
+    - Isi **Keterangan** dan **Jumlah**.
+    - **Total Rencana Pengeluaran** akan terupdate otomatis.
+6.  Klik **Create** untuk menyimpan.
+
+### 2. Mengelola Data
+
+- **Edit**: Klik ikon pensil pada baris data yang ingin diubah.
+- **Hapus**: Centang data dan pilih delete, atau gunakan tombol delete pada baris data.
+
+## Struktur Menu & Hak Akses
+
+Fitur ini telah diintegrasikan ke sidebar utama dengan spesifikasi berikut:
+
+- **Grup Menu**: `Financial Management`
+- **Label Menu**: `RAPB Sekolah`
+- **Ikon**: `Heroicon::OutlinedBanknotes`
+- **Urutan**: Prioritas utama dalam grup (Sort: 1)
+
+### Hak Akses (Permissions)
+
+Akses ke menu ini dikontrol oleh role dan permission berikut:
+
+- `ViewAny:FinancialRecord`: Mengizinkan user melihat menu di sidebar dan mengakses halaman index.
+- `Create:FinancialRecord`: Mengizinkan user membuat data baru.
+- `Update:FinancialRecord`: Mengizinkan user mengedit data.
+- `Delete:FinancialRecord`: Mengizinkan user menghapus data.
+
+Pastikan user memiliki role yang mencakup permission di atas agar menu muncul di sidebar.
+
+### Kontrol Akses Berbasis Departemen
+
+Untuk pengguna dengan role `user`, sistem menerapkan pembatasan otomatis:
+
+1.  **View**: User hanya dapat melihat data RAPB Sekolah yang terkait dengan departemen mereka.
+2.  **Create/Edit**: Field **Departemen** akan otomatis terisi dan terkunci sesuai dengan departemen user yang sedang login.
+3.  **Security**: User tidak dapat mengakses data departemen lain melalui URL atau manipulasi form.
+
+User dengan role `super_admin` atau `admin` memiliki akses penuh ke semua data departemen.
