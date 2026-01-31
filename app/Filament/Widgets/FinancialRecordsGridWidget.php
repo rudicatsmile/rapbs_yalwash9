@@ -81,6 +81,15 @@ class FinancialRecordsGridWidget extends BaseWidget
                         ->icon(fn(float $state): string => $state >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down'),
                 ])->space(3),
             ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('department_id')
+                    ->label('Departemen')
+                    ->relationship('department', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Semua Departemen')
+                    ->visible(fn () => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
+            ])
             ->contentGrid([
                 'md' => 2,
                 'xl' => 3,

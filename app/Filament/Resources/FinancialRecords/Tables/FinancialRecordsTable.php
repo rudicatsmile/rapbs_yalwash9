@@ -51,7 +51,9 @@ class FinancialRecordsTable
                     ->label('Departemen')
                     ->relationship('department', 'name')
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->placeholder('Semua Departemen')
+                    ->visible(fn () => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
             ])
             ->recordActions([
                 // Grouping actions horizontally using simple array structure (rendered inline by default).
