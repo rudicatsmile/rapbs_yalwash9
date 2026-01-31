@@ -58,6 +58,15 @@ class FinancialRecordPolicy
         return $user->can('Delete:FinancialRecord');
     }
 
+
+    /**
+     * Determine whether the user can delete any models.
+     */
+    public function deleteAny(User $user): bool
+    {
+        return $user->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor']) && $user->can('Delete:FinancialRecord');
+    }
+
     /**
      * Determine whether the user can restore the model.
      */

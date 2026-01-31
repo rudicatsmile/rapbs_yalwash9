@@ -92,6 +92,16 @@ class FinancialRecordsTable
                         ->modalDescription('Are you sure you want to duplicate the selected records?')
                         ->modalSubmitActionLabel('Yes, Duplicate')
                         ->action(function (Collection $records) {
+                            // Backend authorization check
+                            if (! auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Access Denied')
+                                    ->body('You do not have permission to perform this action.')
+                                    ->danger()
+                                    ->send();
+                                return;
+                            }
+
                             foreach ($records as $record) {
                                 $newRecord = $record->replicate();
                                 $newRecord->status = true;
@@ -99,7 +109,8 @@ class FinancialRecordsTable
                             }
                         })
                         ->deselectRecordsAfterCompletion(),
-                ]),
+                ])
+                ->visible(fn () => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
             ]);
     }
 }
