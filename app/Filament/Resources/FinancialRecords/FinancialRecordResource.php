@@ -33,6 +33,19 @@ class FinancialRecordResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
+
+        $query->withSum([
+            'expenseItems as mandiri_expense' => function ($query) {
+                $query->where('source_type', 'Mandiri');
+            }
+        ], 'amount');
+
+        $query->withSum([
+            'expenseItems as bos_expense' => function ($query) {
+                $query->where('source_type', 'BOS');
+            }
+        ], 'amount');
+
         $user = auth()->user();
 
         if ($user && $user->hasRole('user') && !$user->hasRole(['super_admin', 'admin', 'Admin', 'Super admin', 'editor', 'Editor'])) {

@@ -11,6 +11,7 @@ class ExpenseItem extends Model
         'financial_record_id',
         'description',
         'amount',
+        'source_type',
     ];
 
     protected $casts = [

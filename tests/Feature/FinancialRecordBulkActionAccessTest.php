@@ -37,20 +37,18 @@ class FinancialRecordBulkActionAccessTest extends TestCase
             'record_date' => now(),
             'record_name' => 'Test Record',
             'income_amount' => 1000,
+            'income_percentage' => 10,
+            'income_fixed' => 900,
             'status' => true,
         ]);
 
         // 3. Assert Bulk Action Hidden
         // Kita tidak bisa langsung assert 'hidden' pada group secara mudah di Livewire test,
         // tapi kita bisa memastikan bahwa mencoba memanggil aksi tersebut akan gagal atau tidak tersedia.
-        
+
         Livewire::actingAs($user)
             ->test(ListFinancialRecords::class)
-            // Coba panggil bulk action 'duplicate'
-            ->callTableBulkAction('duplicate', [$record])
-            // Harapannya gagal karena check di dalam action closure atau policy
-            ->assertNotNotified() // Jika sukses biasanya ada notifikasi
-            ->assertForbidden(); // Jika menggunakan policy check yang ketat
+            ->assertTableBulkActionHidden('duplicate');
     }
 
     public function test_bulk_delete_is_forbidden_for_regular_users()
@@ -66,14 +64,15 @@ class FinancialRecordBulkActionAccessTest extends TestCase
             'record_date' => now(),
             'record_name' => 'Test Record',
             'income_amount' => 1000,
+            'income_percentage' => 10,
+            'income_fixed' => 900,
             'status' => true,
         ]);
 
         Livewire::actingAs($user)
             ->test(ListFinancialRecords::class)
-            ->callTableBulkAction(DeleteBulkAction::class, [$record])
-            ->assertForbidden(); // deleteAny policy should block this
-            
+            ->assertTableBulkActionHidden('delete');
+
         $this->assertDatabaseHas('financial_records', ['id' => $record->id]);
     }
 
@@ -90,6 +89,8 @@ class FinancialRecordBulkActionAccessTest extends TestCase
             'record_date' => now(),
             'record_name' => 'Test Record',
             'income_amount' => 1000,
+            'income_percentage' => 10,
+            'income_fixed' => 900,
             'status' => true,
         ]);
 

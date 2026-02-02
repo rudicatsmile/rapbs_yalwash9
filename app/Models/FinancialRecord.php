@@ -19,6 +19,8 @@ class FinancialRecord extends Model
         'income_amount',
         'income_percentage',
         'income_fixed',
+        'income_bos',
+        'income_total',
         'total_expense',
         'status',
     ];
@@ -28,6 +30,8 @@ class FinancialRecord extends Model
         'income_amount' => 'decimal:2',
         'income_percentage' => 'decimal:2',
         'income_fixed' => 'decimal:2',
+        'income_bos' => 'decimal:2',
+        'income_total' => 'decimal:2',
         'total_expense' => 'decimal:2',
         'status' => 'boolean',
     ];

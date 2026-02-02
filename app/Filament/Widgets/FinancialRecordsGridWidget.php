@@ -61,20 +61,20 @@ class FinancialRecordsGridWidget extends BaseWidget
                         ->icon('heroicon-m-calendar'),
 
                     Tables\Columns\Layout\Split::make([
-                        Tables\Columns\TextColumn::make('income_fixed')
-                            ->money('IDR')
+                        Tables\Columns\TextColumn::make('income_total')
+                            ->money('Rp. ')
                             ->color('success')
                             ->prefix('Pemasukan: '),
 
                         Tables\Columns\TextColumn::make('total_expense')
-                            ->money('IDR')
+                            ->money('Rp. ')
                             ->color('danger')
                             ->prefix('Pengeluaran: '),
                     ]),
 
                     Tables\Columns\TextColumn::make('balance')
-                        ->state(fn(FinancialRecord $record): float => $record->income_fixed - $record->total_expense)
-                        ->money('IDR')
+                        ->state(fn(FinancialRecord $record): float => $record->income_total - $record->total_expense)
+                        ->money('Rp. ')
                         ->badge()
                         ->color(fn(float $state): string => $state >= 0 ? 'success' : 'danger')
                         ->formatStateUsing(fn(float $state): string => ($state >= 0 ? '+' : '') . number_format($state, 2, ',', '.'))
@@ -88,7 +88,7 @@ class FinancialRecordsGridWidget extends BaseWidget
                     ->searchable()
                     ->preload()
                     ->placeholder('Semua Departemen')
-                    ->visible(fn () => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
+                    ->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
             ])
             ->contentGrid([
                 'md' => 2,

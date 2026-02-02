@@ -9,6 +9,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ReplicateAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,6 +19,8 @@ use Filament\Notifications\Notification;
 use App\Models\FinancialRecord;
 use Filament\Actions\ExportAction;
 use App\Filament\Exports\FinancialRecordExporter;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
 
 class FinancialRecordsTable
 {
@@ -37,20 +40,149 @@ class FinancialRecordsTable
                 TextColumn::make('record_name')
                     ->label('Nama History')
                     ->searchable(),
-                TextColumn::make('income_fixed')
-                    ->label('Total Pemasukan')
-                    ->money('IDR')
-                    ->sortable(),
-                TextColumn::make('total_expense')
-                    ->label('Total Pengeluaran')
-                    ->money('IDR')
-                    ->sortable(),
+                TextColumn::make('income_details')
+                    ->label('Rincian Pemasukan')
+                    ->html()
+                    ->state(function (FinancialRecord $record) {
+                        $formatMoney = fn($amount) => 'Rp ' . number_format($amount, 0, ',', '.');
+
+                        $html = '<div class="flex flex-col space-y-1">';
+
+                        // Total Income
+                        $html .= '<div class="font-bold text-success-600">';
+                        $html .= $formatMoney($record->income_total);
+                        $html .= '</div>';
+
+                        // Details (Fixed & BOS)
+                        $html .= '<div class="flex flex-col gap-1 text-[10px] opacity-80">';
+
+                        if ($record->income_fixed > 0) {
+                            $html .= '<div class="flex items-center gap-1">';
+                            $html .= '<span class="px-1.5 py-0.5 rounded bg-info-50 text-info-700 border border-info-200">Mandiri : </span>';
+                            $html .= '<span>' . $formatMoney($record->income_fixed) . '</span>';
+                            $html .= '</div>';
+                        }
+
+                        if ($record->income_bos > 0) {
+                            $html .= '<div class="flex items-center gap-1">';
+                            $html .= '<span class="px-1.5 py-0.5 rounded bg-success-50 text-success-700 border border-success-200">BOS : </span>';
+                            $html .= '<span>' . $formatMoney($record->income_bos) . '</span>';
+                            $html .= '</div>';
+                        }
+
+                        $html .= '</div>'; // End Details
+                        $html .= '</div>'; // End Container
+            
+                        return $html;
+                    })
+                    ->sortable(['income_total'])
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total')
+                            ->using(function ($query) {
+                                return $query->selectRaw('sum(income_total) as total, sum(income_fixed) as fixed, sum(income_bos) as bos')->first();
+                            })
+                            ->formatStateUsing(function ($state) {
+                                $formatMoney = fn($amount) => 'Rp ' . number_format($amount, 0, ',', '.');
+                                $html = '<div class="flex flex-col space-y-1">';
+                                $html .= '<div class="font-bold text-success-600">' . $formatMoney($state->total) . '</div>';
+
+                                if ($state->fixed > 0 || $state->bos > 0) {
+                                    $html .= '<div class="flex flex-col gap-1 text-[10px] opacity-80">';
+                                    if ($state->fixed > 0) {
+                                        $html .= '<div class="flex items-center gap-1"><span class="px-1.5 py-0.5 rounded bg-info-50 text-info-700 border border-info-200">Mandiri : </span><span>' . $formatMoney($state->fixed) . '</span></div>';
+                                    }
+                                    if ($state->bos > 0) {
+                                        $html .= '<div class="flex items-center gap-1"><span class="px-1.5 py-0.5 rounded bg-success-50 text-success-700 border border-success-200">BOS : </span><span>' . $formatMoney($state->bos) . '</span></div>';
+                                    }
+                                    $html .= '</div>';
+                                }
+                                $html .= '</div>';
+                                return $html;
+                            })
+                    ),
+                TextColumn::make('expense_details')
+                    ->label('Rincian Pengeluaran')
+                    ->html()
+                    ->state(function (FinancialRecord $record) {
+                        $formatMoney = fn($amount) => 'Rp ' . number_format($amount, 0, ',', '.');
+
+                        $html = '<div class="flex flex-col space-y-1">';
+
+                        // Total Expense
+                        $html .= '<div class="font-bold text-danger-600">';
+                        $html .= $formatMoney($record->total_expense);
+                        $html .= '</div>';
+
+                        // Details (Mandiri & BOS)
+                        $html .= '<div class="flex flex-col gap-1 text-[10px] opacity-80">';
+
+                        if ($record->mandiri_expense > 0) {
+                            $html .= '<div class="flex items-center gap-1">';
+                            $html .= '<span class="px-1.5 py-0.5 rounded bg-info-50 text-info-700 border border-info-200">Mandiri : </span>';
+                            $html .= '<span>' . $formatMoney($record->mandiri_expense) . '</span>';
+                            $html .= '</div>';
+                        }
+
+                        if ($record->bos_expense > 0) {
+                            $html .= '<div class="flex items-center gap-1">';
+                            $html .= '<span class="px-1.5 py-0.5 rounded bg-success-50 text-success-700 border border-success-200">BOS : </span>';
+                            $html .= '<span>' . $formatMoney($record->bos_expense) . '</span>';
+                            $html .= '</div>';
+                        }
+
+                        $html .= '</div>'; // End Details
+                        $html .= '</div>'; // End Container
+            
+                        return $html;
+                    })
+                    ->sortable(['total_expense'])
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total')
+                            ->using(function ($query) {
+                                $total = $query->sum('total_expense');
+                                $mandiri = DB::table('expense_items')
+                                    ->where('source_type', 'Mandiri')
+                                    ->whereIn('financial_record_id', $query->clone()->reorder()->select('id'))
+                                    ->sum('amount');
+                                $bos = DB::table('expense_items')
+                                    ->where('source_type', 'BOS')
+                                    ->whereIn('financial_record_id', $query->clone()->reorder()->select('id'))
+                                    ->sum('amount');
+                                return (object) ['total' => $total, 'mandiri' => $mandiri, 'bos' => $bos];
+                            })
+                            ->formatStateUsing(function ($state) {
+                                $formatMoney = fn($amount) => 'Rp ' . number_format($amount, 0, ',', '.');
+                                $html = '<div class="flex flex-col space-y-1">';
+                                $html .= '<div class="font-bold text-danger-600">' . $formatMoney($state->total) . '</div>';
+
+                                if ($state->mandiri > 0 || $state->bos > 0) {
+                                    $html .= '<div class="flex flex-col gap-1 text-[10px] opacity-80">';
+                                    if ($state->mandiri > 0) {
+                                        $html .= '<div class="flex items-center gap-1"><span class="px-1.5 py-0.5 rounded bg-info-50 text-info-700 border border-info-200">Mandiri : </span><span>' . $formatMoney($state->mandiri) . '</span></div>';
+                                    }
+                                    if ($state->bos > 0) {
+                                        $html .= '<div class="flex items-center gap-1"><span class="px-1.5 py-0.5 rounded bg-success-50 text-success-700 border border-success-200">BOS : </span><span>' . $formatMoney($state->bos) . '</span></div>';
+                                    }
+                                    $html .= '</div>';
+                                }
+                                $html .= '</div>';
+                                return $html;
+                            })
+                    ),
                 TextColumn::make('balance')
                     ->label('Saldo Akhir')
                     ->money('IDR')
                     ->state(function ($record) {
-                        return $record->income_fixed - $record->total_expense;
-                    }),
+                        return $record->income_total - $record->total_expense;
+                    })
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('Total')
+                            ->using(fn($query) => $query->sum('income_total') - $query->sum('total_expense'))
+                            ->money('IDR')
+                    ),
             ])
             ->filters([
                 SelectFilter::make('department_id')
@@ -167,6 +299,18 @@ class FinancialRecordsTable
 
                             $writer->close();
                         }, "RAPBS_" . ($record->department->name ?? 'Umum') . "_" . now()->format('Y-m-d') . ".xlsx");
+                    })
+                    ->iconButton(),
+
+                Action::make('pdf')
+                    ->label('PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('warning')
+                    ->tooltip('Download PDF')
+                    ->action(function (FinancialRecord $record) {
+                        return response()->streamDownload(function () use ($record) {
+                            echo Pdf::loadView('pdf.financial_record', ['record' => $record])->output();
+                        }, 'financial_record_' . $record->id . '_' . ($record->record_date ? $record->record_date->format('Y-m-d') : 'no-date') . '.pdf');
                     })
                     ->iconButton(),
             ])
