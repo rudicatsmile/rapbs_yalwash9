@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Filament\Notifications\Notification;
 use App\Models\FinancialRecord;
+use Filament\Actions\ExportAction;
+use App\Filament\Exports\FinancialRecordExporter;
 
 class FinancialRecordsTable
 {
@@ -57,7 +59,7 @@ class FinancialRecordsTable
                     ->searchable()
                     ->preload()
                     ->placeholder('Semua Departemen')
-                    ->visible(fn () => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
+                    ->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
             ])
             ->recordActions([
                 // Grouping actions horizontally using simple array structure (rendered inline by default).
@@ -103,6 +105,70 @@ class FinancialRecordsTable
                     ->disabled(fn() => auth()->user() && auth()->user()->hasRole('user'))
                     ->iconButton() // Render as icon button
                     ->tooltip(fn($record) => $record->status ? 'Deactivate Record' : 'Activate Record'), // Dynamic tooltip
+
+                Action::make('download_excel')
+                    ->label('Download Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->tooltip('Download Record Details')
+                    ->action(function (FinancialRecord $record) {
+                        return response()->streamDownload(function () use ($record) {
+                            $writer = new \OpenSpout\Writer\XLSX\Writer();
+                            $writer->openToFile('php://output');
+
+                            // 1. Structure changes
+                            $headers = ['Tanggal Transaksi', 'Departemen', 'Deskripsi', 'Jumlah Nominal', 'Tipe', 'Saldo Akhir'];
+                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($headers));
+
+                            $type = $record->income_fixed > 0 ? 'Pemasukan' : 'Pengeluaran';
+                            $nominal = $record->income_fixed > 0 ? $record->income_fixed : $record->total_expense;
+                            $balance = $record->income_fixed - $record->total_expense;
+
+                            $row = [
+                                $record->record_date ? $record->record_date->format('d-m-Y') : '-',
+                                $record->department->name ?? '-',
+                                $record->record_name,
+                                number_format($nominal, 2, ',', '.'),
+                                $type,
+                                number_format($balance, 2, ',', '.')
+                            ];
+                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($row));
+
+                            // Spacer row
+                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([]));
+                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([]));
+
+                            // 2. Expense Items Integration
+                            $expenseItems = $record->expenseItems;
+                            if ($expenseItems->isNotEmpty()) {
+                                // Section Header
+                                $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues(['Rincian Pengeluaran']));
+
+                                // Table Headers
+                                $itemHeaders = ['No', 'Deskripsi Item', 'Jumlah'];
+                                $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($itemHeaders));
+
+                                $totalAmount = 0;
+                                foreach ($expenseItems as $index => $item) {
+                                    $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([
+                                        $index + 1,
+                                        $item->description,
+                                        number_format($item->amount, 2, ',', '.')
+                                    ]));
+                                    $totalAmount += $item->amount;
+                                }
+
+                                // 3. Total Amount Row
+                                $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([
+                                    '',
+                                    'Total',
+                                    number_format($totalAmount, 2, ',', '.')
+                                ]));
+                            }
+
+                            $writer->close();
+                        }, "RAPBS_" . ($record->department->name ?? 'Umum') . "_" . now()->format('Y-m-d') . ".xlsx");
+                    })
+                    ->iconButton(),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -116,7 +182,7 @@ class FinancialRecordsTable
                         ->modalSubmitActionLabel('Yes, Duplicate')
                         ->action(function (Collection $records) {
                             // Backend authorization check
-                            if (! auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])) {
+                            if (!auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])) {
                                 Notification::make()
                                     ->title('Access Denied')
                                     ->body('You do not have permission to perform this action.')
@@ -148,7 +214,14 @@ class FinancialRecordsTable
                         })
                         ->deselectRecordsAfterCompletion(),
                 ])
-                ->visible(fn () => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
+                    ->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
+            ])
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(FinancialRecordExporter::class)
+                    ->label('Export Excel')
+                    ->tooltip('Export to Excel')
+                    ->icon('heroicon-m-arrow-down-tray'),
             ]);
     }
 }

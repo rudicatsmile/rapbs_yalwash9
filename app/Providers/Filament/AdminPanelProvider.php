@@ -33,7 +33,7 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->path('admin')
+            ->path('/')
             ->brandName('RAPBS Yayasan Al-Wathoniyah9')
             ->login()
             ->registration()
