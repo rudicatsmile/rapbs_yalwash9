@@ -298,7 +298,7 @@ class FinancialRecordsTable
                             }
 
                             $writer->close();
-                        }, "RAPBS_" . ($record->department->name ?? 'Umum') . "_" . now()->format('Y-m-d') . ".xlsx");
+                        }, "Effin9_" . ($record->department->name ?? 'Umum') . "_" . now()->format('Y-m-d') . ".xlsx");
                     })
                     ->iconButton(),
 

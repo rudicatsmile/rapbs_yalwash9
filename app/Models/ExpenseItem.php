@@ -12,10 +12,14 @@ class ExpenseItem extends Model
         'description',
         'amount',
         'source_type',
+        'realisasi',
+        'saldo',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'realisasi' => 'decimal:2',
+        'saldo' => 'decimal:2',
     ];
 
     public function financialRecord(): BelongsTo

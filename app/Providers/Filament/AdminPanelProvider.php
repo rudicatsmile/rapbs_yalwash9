@@ -3,8 +3,6 @@
 namespace App\Providers\Filament;
 
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
-use DutchCodingCompany\FilamentSocialite\FilamentSocialitePlugin;
-use DutchCodingCompany\FilamentSocialite\Provider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -34,7 +32,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('/')
-            ->brandName('RAPBS Yayasan Al-Wathoniyah9')
+            ->brandName('Ef-fin9')
             ->login()
             ->registration()
             ->passwordReset()
@@ -83,22 +81,6 @@ class AdminPanelProvider extends PanelProvider
                     ->enableSanctumTokens(
                         permissions: ['create', 'view', 'update', 'delete']
                     ),
-                FilamentSocialitePlugin::make()
-                    ->providers([
-                        Provider::make('google')
-                            ->label('Google')
-                            ->icon('fab-google')
-                            ->color('danger'),
-                        Provider::make('github')
-                            ->label('GitHub')
-                            ->icon('fab-github')
-                            ->color('gray'),
-                        Provider::make('facebook')
-                            ->label('Facebook')
-                            ->icon('fab-facebook')
-                            ->color('primary'),
-                    ])
-                    ->showDivider(true),
             ])
             ->authMiddleware([
                 Authenticate::class,

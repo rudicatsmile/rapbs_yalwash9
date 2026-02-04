@@ -13,7 +13,7 @@ class FinancialRecordsGridWidget extends BaseWidget
 {
     protected int|string|array $columnSpan = 'full';
 
-    protected static ?string $heading = 'RAPBS Overview';
+    protected static ?string $heading = 'Ef-fin9 Overview';
     protected static bool $isLazy = true;
 
     public function table(Table $table): Table

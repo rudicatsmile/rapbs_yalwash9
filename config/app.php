@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'RAPBS Yayasan Al-Wathoniyah9'),
+    'name' => env('APP_NAME', 'Ef-fin9'),
 
     /*
     |--------------------------------------------------------------------------

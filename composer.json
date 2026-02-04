@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "laravel/laravel",
     "type": "project",
-    "description": "Sistem RAPBS Yayasan Al-Wathoniyah9.",
+    "description": "Sistem Ef-fin9.",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {

@@ -113,7 +113,7 @@
     </div>
 
     <div class="footer" style="margin-top: 50px; text-align: right; font-size: 10px; color: #666;">
-        <p>Dicetak otomatis oleh Sistem RAPBS pada: {{ now()->format('d-m-Y H:i') }}</p>
+        <p>Dicetak otomatis oleh Sistem Ef-fin9 pada: {{ now()->format('d-m-Y H:i') }}</p>
     </div>
 </body>
 </html>

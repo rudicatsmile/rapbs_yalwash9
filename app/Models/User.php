@@ -132,30 +132,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasMedia,
     }
 
     /**
-     * Get all social accounts for the user.
-     */
-    public function socialAccounts(): HasMany
-    {
-        return $this->hasMany(SocialAccount::class);
-    }
-
-    /**
-     * Get social account for specific provider.
-     */
-    public function getSocialAccount(string $provider): ?SocialAccount
-    {
-        return $this->socialAccounts()->where('provider', $provider)->first();
-    }
-
-    /**
-     * Check if user has linked social account.
-     */
-    public function hasSocialAccount(string $provider): bool
-    {
-        return $this->socialAccounts()->where('provider', $provider)->exists();
-    }
-
-    /**
      * Get the activity log options for this model.
      */
     public function getActivitylogOptions(): LogOptions
