@@ -197,6 +197,16 @@ class FinancialRecordsTable
                 // Grouping actions horizontally using simple array structure (rendered inline by default).
                 // Converted to Icon Buttons to save space and ensure responsiveness.
                 // Tooltips added for better UX.
+                Action::make('history')
+                    ->label('History')
+                    ->icon('heroicon-m-clock')
+                    ->color('info')
+                    ->modalContent(fn(FinancialRecord $record) => view('filament.tables.actions.history-modal', ['record' => $record]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close')
+                    ->iconButton()
+                    ->tooltip('View History'),
+
                 EditAction::make()
                     ->iconButton()
                     ->tooltip('Edit Record'),

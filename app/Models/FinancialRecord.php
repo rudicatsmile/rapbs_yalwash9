@@ -56,4 +56,9 @@ class FinancialRecord extends Model
     {
         return $this->hasMany(ExpenseItem::class);
     }
+
+    public function tracks(): HasMany
+    {
+        return $this->hasMany(FinancialRecordTrack::class);
+    }
 }
