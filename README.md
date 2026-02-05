@@ -1,6 +1,6 @@
-# RAPBS Yayasan Al-Wathoniyah9
+# Ef-fin9
 
-Sistem Rencana Anggaran Pendapatan dan Belanja Sekolah (RAPBS) Yayasan Al-Wathoniyah9.
+Sistem Manajemen Keuangan Sekolah Ef-fin9.
 
 ## Tentang Aplikasi
 

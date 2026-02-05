@@ -24,7 +24,10 @@ class Realization extends Model
         'income_bos',
         'income_total',
         'total_expense',
+        'total_realization',
+        'total_balance',
         'status',
+        'status_realisasi',
     ];
 
     protected $casts = [
@@ -35,7 +38,10 @@ class Realization extends Model
         'income_bos' => 'decimal:2',
         'income_total' => 'decimal:2',
         'total_expense' => 'decimal:2',
+        'total_realization' => 'decimal:2',
+        'total_balance' => 'decimal:2',
         'status' => 'boolean',
+        'status_realisasi' => 'boolean',
     ];
 
     public function user(): BelongsTo

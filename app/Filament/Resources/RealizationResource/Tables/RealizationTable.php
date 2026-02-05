@@ -40,38 +40,22 @@ class RealizationTable
                 TextColumn::make('record_name')
                     ->label('Nama History')
                     ->searchable(),
-                TextColumn::make('income_details')
-                    ->label('Rincian Pemasukan')
-                    ->html()
+                TextColumn::make('total_expense')
+                    ->label('Total Anggaran')
+                    ->sortable()
+                    ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state, 0, ',', '.')),
+                TextColumn::make('total_realization')
+                    ->label('Total Realisasi')
+                    ->sortable()
+                    ->default(0)
+                    ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state, 0, ',', '.')),
+                TextColumn::make('total_balance')
+                    ->label('Sisa Saldo')
+                    ->sortable()
+                    ->default(0)
+                    ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state, 0, ',', '.'))
                     ->state(function ($record) {
-                        $formatMoney = fn($amount) => 'Rp ' . number_format($amount, 0, ',', '.');
-
-                        $html = '<div class="flex flex-col space-y-1">';
-                        $html .= '<div class="font-bold text-success-600">';
-                        $html .= $formatMoney($record->income_total);
-                        $html .= '</div>';
-                        $html .= '</div>';
-                        return $html;
-                    })
-                    ->sortable(['income_total']),
-                TextColumn::make('expense_details')
-                    ->label('Rincian Pengeluaran')
-                    ->html()
-                    ->state(function ($record) {
-                        $formatMoney = fn($amount) => 'Rp ' . number_format($amount, 0, ',', '.');
-                        $html = '<div class="flex flex-col space-y-1">';
-                        $html .= '<div class="font-bold text-danger-600">';
-                        $html .= $formatMoney($record->total_expense);
-                        $html .= '</div>';
-                        $html .= '</div>';
-                        return $html;
-                    })
-                    ->sortable(['total_expense']),
-                TextColumn::make('balance')
-                    ->label('Saldo Akhir')
-                    ->money('IDR')
-                    ->state(function ($record) {
-                        return $record->income_total - $record->total_expense;
+                         return $record->total_expense - $record->total_realization;
                     }),
             ])
             ->filters([

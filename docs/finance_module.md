@@ -13,7 +13,13 @@ Modul ini dirancang untuk membantu Anda mencatat rencana pemasukan dan pengeluar
     - Tambah item pengeluaran tanpa batas.
     - Perhitungan otomatis total pengeluaran.
 
-3.  **Histori & Laporan**
+3.  **Pencatatan Realisasi**
+    - Input realisasi per item pengeluaran.
+    - Perhitungan otomatis Total Realisasi dan Total Saldo.
+    - Validasi input (mencegah nilai negatif).
+    - Tampilan total yang informatif dengan tooltip.
+
+4.  **Histori & Laporan**
     - Melihat daftar riwayat keuangan.
     - Menghitung saldo akhir otomatis.
 
@@ -41,6 +47,21 @@ Modul ini dirancang untuk membantu Anda mencatat rencana pemasukan dan pengeluar
 
 - **Edit**: Klik ikon pensil pada baris data yang ingin diubah.
 - **Hapus**: Centang data dan pilih delete, atau gunakan tombol delete pada baris data.
+
+### 3. Mencatat Realisasi
+
+1.  Buka menu **Realisasi**.
+2.  Pilih data RAPB yang ingin diupdate realisasinya (klik tombol Edit/Pensil).
+3.  Pada bagian **Rencana Pengeluaran**:
+    - Masukkan nilai pada kolom **Realisasi** untuk setiap item.
+    - Kolom **Saldo** akan terhitung otomatis (Anggaran - Realisasi).
+4.  Perhatikan baris **Total** di bagian bawah:
+    - **Total Anggaran**: Jumlah seluruh anggaran.
+    - **Total Realisasi**: Jumlah seluruh realisasi yang diinput.
+    - **Total Saldo**: Sisa anggaran yang belum terealisasi.
+    - _Tip: Arahkan kursor ke nilai total untuk melihat penjelasan rumus._
+5.  Klik **Save Changes**.
+6.  Sistem akan menyimpan data dan mengarahkan kembali ke tabel daftar realisasi dengan notifikasi sukses.
 
 ## Struktur Menu & Hak Akses
 

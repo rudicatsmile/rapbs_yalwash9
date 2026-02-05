@@ -79,6 +79,27 @@ class FinancialRecordsGridWidget extends BaseWidget
                         ->color(fn(float $state): string => $state >= 0 ? 'success' : 'danger')
                         ->formatStateUsing(fn(float $state): string => ($state >= 0 ? '+' : '') . number_format($state, 2, ',', '.'))
                         ->icon(fn(float $state): string => $state >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down'),
+
+                    Tables\Columns\Layout\Split::make([
+                        //Tambah field 'status'. Jika nilai = 1 maka 'Disetujui', jika 0 maka 'Belum Disetujui'
+                        Tables\Columns\TextColumn::make('status')
+                            ->label('Status')
+                            ->state(fn(FinancialRecord $record): string => $record->status == 1 ? 'Disetujui' : 'Belum Disetujui')
+                            ->badge()
+                            ->color(fn(string $state): string => $state == 'Disetujui' ? 'success' : 'danger')
+                            ->weight(FontWeight::Medium),
+
+                        //Tambah field 'status_realisasi'. Jika nilai = 1 maka 'Terlaporkan', jika 0 maka 'Belum Terlaporkan'
+                        Tables\Columns\TextColumn::make('status_realisasi')
+                            ->label('Status Realisasi')
+                            ->state(fn(FinancialRecord $record): string => $record->status_realisasi == 1 ? 'Terlaporkan' : 'Belum Terlaporkan')
+                            ->badge()
+                            ->color(fn(string $state): string => $state == 'Terlaporkan' ? 'success' : 'danger')
+                            ->weight(FontWeight::Medium)
+                            ->alignment('end'),
+                    ]),
+
+
                 ])->space(3),
             ])
             ->filters([

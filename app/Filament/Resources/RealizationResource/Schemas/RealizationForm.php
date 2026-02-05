@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RealizationResource\Schemas;
 
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -24,13 +25,13 @@ class RealizationForm
             ->components([
                 Section::make('Header')
                     ->schema([
-                        Toggle::make('status')
+                        Toggle::make('status_realisasi')
                             ->label('Status Aktif')
                             ->onIcon('heroicon-m-check')
                             ->offIcon('heroicon-m-x-mark')
                             ->onColor('success')
                             ->offColor('danger')
-                            ->default(true)
+                            ->default(false)
                             ->visible(fn() => auth()->user() && !auth()->user()->hasRole('user'))
                             ->disabled(fn() => auth()->user() && auth()->user()->hasRole('user'))
                             ->columnSpanFull(),
@@ -101,15 +102,8 @@ class RealizationForm
                     ])->columns(1),
 
                 Section::make('Rencana Pengeluaran')
+                    ->columnSpanFull()
                     ->schema([
-                        TextInput::make('total_expense')
-                            ->label('Total Rencana Pengeluaran')
-                            ->prefix('Rp')
-                            ->disabled()
-                            ->dehydrated()
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
-                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state)),
-
                         Repeater::make('expenseItems')
                             ->relationship('expenseItems')
                             ->label('Daftar Pengeluaran & Realisasi')
@@ -139,7 +133,7 @@ class RealizationForm
                                         'md' => 2,
                                     ]),
                                 TextInput::make('amount')
-                                    ->label('Jumlah')
+                                    ->label('Anggaran')
                                     ->prefix('Rp')
                                     ->readOnly()
                                     ->dehydrated()
@@ -159,13 +153,31 @@ class RealizationForm
                                         $realisasi = self::parseMoney($state);
                                         $amount = self::parseMoney($get('amount'));
 
-                                        // Validation: Realisasi <= Jumlah handled in validation rule or visually?
-                                        // User said: "Validasi agar Realisasi <= Jumlah; tampilkan pesan error inline"
-
                                         $set('realisasi', number_format($realisasi, 0, ',', '.'));
 
                                         $saldo = $amount - $realisasi;
                                         $set('saldo', number_format($saldo, 0, ',', '.'));
+
+                                        // Recalculate Totals
+                                        $items = $get('../../expenseItems');
+                                        $totalExpense = 0;
+                                        $totalRealization = 0;
+                                        $totalBalance = 0;
+
+                                        foreach ($items as $item) {
+                                            $itemAmount = self::parseMoney($item['amount'] ?? 0);
+                                            $itemRealisasi = self::parseMoney($item['realisasi'] ?? 0);
+                                            // Recalculate saldo locally to ensure consistency
+                                            $itemSaldo = $itemAmount - $itemRealisasi;
+
+                                            $totalExpense += $itemAmount;
+                                            $totalRealization += $itemRealisasi;
+                                            $totalBalance += $itemSaldo;
+                                        }
+
+                                        $set('../../total_expense', number_format($totalExpense, 0, ',', '.'));
+                                        $set('../../total_realization', number_format($totalRealization, 0, ',', '.'));
+                                        $set('../../total_balance', number_format($totalBalance, 0, ',', '.'));
                                     })
                                     ->rule(function (Get $get) {
                                         return function (string $attribute, $value, \Closure $fail) use ($get) {
@@ -173,6 +185,9 @@ class RealizationForm
                                             $amount = self::parseMoney($get('amount'));
                                             if ($realisasi > $amount) {
                                                 $fail("Realisasi tidak boleh melebihi jumlah anggaran.");
+                                            }
+                                            if ($realisasi < 0) {
+                                                $fail("Realisasi tidak boleh negatif.");
                                             }
                                         };
                                     })
@@ -200,6 +215,45 @@ class RealizationForm
                             ])
                             ->columns([
                                 'default' => 12,
+                            ]),
+
+                        \Filament\Schemas\Components\Grid::make(3)
+                            ->schema([
+                                TextInput::make('total_expense')
+                                    ->label('Total Anggaran')
+                                    ->prefix('Rp')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                                    ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                                    ->extraInputAttributes([
+                                        'style' => 'font-weight: bold',
+                                        'title' => 'Total penjumlahan dari seluruh anggaran item pengeluaran'
+                                    ]),
+                                TextInput::make('total_realization')
+                                    ->label('Total Realisasi')
+                                    ->prefix('Rp')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->default(0)
+                                    ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                                    ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                                    ->extraInputAttributes([
+                                        'style' => 'font-weight: bold',
+                                        'title' => 'Total akumulasi dari realisasi yang telah diinput'
+                                    ]),
+                                TextInput::make('total_balance')
+                                    ->label('Total Saldo')
+                                    ->prefix('Rp')
+                                    ->disabled()
+                                    ->dehydrated()
+                                    ->default(0)
+                                    ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                                    ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                                    ->extraInputAttributes([
+                                        'style' => 'font-weight: bold',
+                                        'title' => 'Selisih antara Total Anggaran dikurangi Total Realisasi'
+                                    ]),
                             ]),
                     ]),
             ]);

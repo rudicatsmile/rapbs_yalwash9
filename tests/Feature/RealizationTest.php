@@ -22,6 +22,42 @@ class RealizationTest extends TestCase
         Role::create(['name' => 'super_admin', 'guard_name' => 'web']);
     }
 
+    public function test_realization_status_realisasi_toggle()
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $record = FinancialRecord::factory()->create([
+            'user_id' => $user->id,
+            'status_realisasi' => false,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(RealizationResource\Pages\EditRealization::class, ['record' => $record->id])
+            ->assertFormSet(['status_realisasi' => false])
+            ->fillForm(['status_realisasi' => true])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('financial_records', [
+            'id' => $record->id,
+            'status_realisasi' => 1,
+        ]);
+
+        // Test toggling back to false
+        Livewire::actingAs($user)
+            ->test(RealizationResource\Pages\EditRealization::class, ['record' => $record->id])
+            ->assertFormSet(['status_realisasi' => true])
+            ->fillForm(['status_realisasi' => false])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('financial_records', [
+            'id' => $record->id,
+            'status_realisasi' => 0,
+        ]);
+    }
+
     public function test_realization_resource_can_be_rendered()
     {
         $user = User::factory()->create();
@@ -65,13 +101,83 @@ class RealizationTest extends TestCase
                 ]
             ])
             ->call('save')
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            ->assertRedirect(RealizationResource::getUrl('index'));
 
         $this->assertDatabaseHas('expense_items', [
             'id' => $expenseItem->id,
             'realisasi' => 50,
             'saldo' => 50,
         ]);
+
+        $this->assertDatabaseHas('financial_records', [
+            'id' => $record->id,
+            'total_realization' => 50,
+            'total_balance' => 50,
+        ]);
+    }
+
+    public function test_realization_totals_calculation()
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $record = FinancialRecord::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $item1 = ExpenseItem::create([
+            'financial_record_id' => $record->id,
+            'description' => 'Item 1',
+            'amount' => 100,
+            'realisasi' => 0,
+        ]);
+        $item2 = ExpenseItem::create([
+            'financial_record_id' => $record->id,
+            'description' => 'Item 2',
+            'amount' => 200,
+            'realisasi' => 0,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(RealizationResource\Pages\EditRealization::class, ['record' => $record->id])
+            ->fillForm([
+                'expenseItems' => [
+                    "record-{$item1->id}" => ['realisasi' => '50'],
+                    "record-{$item2->id}" => ['realisasi' => '100'],
+                ]
+            ])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('financial_records', [
+            'id' => $record->id,
+            'total_realization' => 150, // 50 + 100
+            'total_balance' => 150,     // (100-50) + (200-100) = 50 + 100 = 150
+        ]);
+    }
+
+    public function test_realization_negative_validation()
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $record = FinancialRecord::factory()->create();
+        $item = ExpenseItem::create([
+            'financial_record_id' => $record->id,
+            'description' => 'Item 1',
+            'amount' => 100,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(RealizationResource\Pages\EditRealization::class, ['record' => $record->id])
+            ->fillForm([
+                'expenseItems' => [
+                    "record-{$item->id}" => ['realisasi' => '-10'],
+                ]
+            ])
+            ->call('save')
+            ->assertHasErrors(["data.expenseItems.record-{$item->id}.realisasi"]);
     }
 
     public function test_realization_handles_large_numbers()
