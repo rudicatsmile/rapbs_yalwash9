@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use App\Policies\MediaPolicy;
+use App\Models\FinancialRecord;
+use App\Observers\FinancialRecordObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(Media::class, MediaPolicy::class);
+        FinancialRecord::observe(FinancialRecordObserver::class);
         
         //
         // Page::formActionsAlignment(Alignment::Right);

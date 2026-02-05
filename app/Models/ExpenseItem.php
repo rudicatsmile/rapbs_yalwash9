@@ -22,6 +22,8 @@ class ExpenseItem extends Model
         'saldo' => 'decimal:2',
     ];
 
+    protected $touches = ['financialRecord'];
+
     public function financialRecord(): BelongsTo
     {
         return $this->belongsTo(FinancialRecord::class);
