@@ -27,6 +27,66 @@ class FinancialRecordTrackingTest extends TestCase
         $this->assertDatabaseCount('financial_record_tracks', 0);
     }
 
+    public function test_it_prevents_duplicate_tracking_on_double_save_sequence()
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        // 1. Initial State: Final Record with 1 Expense Item
+        $record = FinancialRecord::factory()->create([
+            'status' => 1,
+            'user_id' => $user->id,
+            'total_expense' => 1000
+        ]);
+
+        // Force backdate previous tracks to avoid merging during setup
+        FinancialRecordTrack::query()->update(['created_at' => now()->subMinutes(5)]);
+
+        $item = ExpenseItem::create([
+            'financial_record_id' => $record->id,
+            'description' => 'Item 1',
+            'amount' => 1000,
+        ]);
+
+        // Force backdate again so the next steps are seen as "New Action"
+        FinancialRecordTrack::query()->update(['created_at' => now()->subMinutes(5)]);
+
+        // Expect:
+        // 1. Initial Final
+        // 2. Item Added
+        $this->assertDatabaseCount('financial_record_tracks', 2);
+
+        // 2. Simulate User changing Amount of Item 1 to 2000
+        // This typically updates Parent's Total Expense AND Item's Amount
+
+        // Step A: Parent saves Total Expense (Simulated)
+        $record->update(['total_expense' => 2000]);
+
+        // Check tracks: Should be 3 now (Track A: Total Expense Changed)
+        $this->assertDatabaseCount('financial_record_tracks', 3);
+
+        // Step B: Item saves Amount -> Touches Parent
+        // This simulates the $touches = ['financialRecord'] behavior
+        $item->update(['amount' => 2000]);
+
+        // With Merge Logic:
+        // The update from Step B (Item Save) happens < 2s after Step A (Parent Save).
+        // It should MERGE into Track 3.
+        // So count should REMAIN 3.
+
+        $count = FinancialRecordTrack::count();
+        $this->assertEquals(3, $count, 'Duplicate track created! Expected 3, got ' . $count);
+
+        // Verify Track 3 contains BOTH changes (Total Expense AND Item Amount)
+        $track = FinancialRecordTrack::latest('id')->first();
+        $this->assertArrayHasKey('field_total_expense', $track->changes_summary, 'Total Expense change missing from merged track');
+
+        // Check if expense item change is present
+        // Since we didn't implement specific key check for amount yet in test, let's just ensure the track has updated snapshot
+        $this->assertEquals(2000, $track->snapshot_data['total_expense']);
+        $this->assertEquals(2000, $track->snapshot_data['expense_items'][0]['amount']);
+    }
+
     public function test_it_tracks_initial_final_status()
     {
         $user = User::factory()->create();
@@ -62,6 +122,9 @@ class FinancialRecordTrackingTest extends TestCase
         ]);
 
         $this->assertDatabaseCount('financial_record_tracks', 1);
+
+        // Backdate to avoid merge
+        FinancialRecordTrack::query()->update(['created_at' => now()->subMinutes(5)]);
 
         // Update the record
         $record->update(['income_amount' => 5000000]);
@@ -106,7 +169,11 @@ class FinancialRecordTrackingTest extends TestCase
 
         $record = FinancialRecord::factory()->create(['status' => 1, 'user_id' => $user->id]);
 
-        // Add Item
+        $this->assertDatabaseCount('financial_record_tracks', 1);
+
+        // Backdate to avoid merge
+        FinancialRecordTrack::query()->update(['created_at' => now()->subMinutes(5)]);
+
         $item = ExpenseItem::create([
             'financial_record_id' => $record->id,
             'description' => 'New Item',
@@ -126,11 +193,18 @@ class FinancialRecordTrackingTest extends TestCase
         $this->actingAs($user);
 
         $record = FinancialRecord::factory()->create(['status' => 1, 'user_id' => $user->id]);
+
+        // Backdate Initial
+        FinancialRecordTrack::query()->update(['created_at' => now()->subMinutes(5)]);
+
         $item = ExpenseItem::create([
             'financial_record_id' => $record->id,
             'description' => 'Old Desc',
             'amount' => 500,
         ]);
+
+        // Backdate Item Creation
+        FinancialRecordTrack::query()->update(['created_at' => now()->subMinutes(5)]);
 
         // Update Description
         $item->update(['description' => 'New Desc']);
@@ -152,12 +226,19 @@ class FinancialRecordTrackingTest extends TestCase
         $this->actingAs($user);
 
         $record = FinancialRecord::factory()->create(['status' => 1, 'user_id' => $user->id]);
+
+        // Backdate Initial
+        FinancialRecordTrack::query()->update(['created_at' => now()->subMinutes(5)]);
+
         $item = ExpenseItem::create([
             'financial_record_id' => $record->id,
             'description' => 'Desc',
             'amount' => 500,
             'source_type' => 'Source A',
         ]);
+
+        // Backdate Item Creation
+        FinancialRecordTrack::query()->update(['created_at' => now()->subMinutes(5)]);
 
         $item->update(['source_type' => 'Source B']);
 
@@ -175,11 +256,18 @@ class FinancialRecordTrackingTest extends TestCase
         $this->actingAs($user);
 
         $record = FinancialRecord::factory()->create(['status' => 1, 'user_id' => $user->id]);
+
+        // Backdate Initial
+        FinancialRecordTrack::query()->update(['created_at' => now()->subMinutes(5)]);
+
         $item = ExpenseItem::create([
             'financial_record_id' => $record->id,
             'description' => 'To Delete',
             'amount' => 500,
         ]);
+
+        // Backdate Item Creation
+        FinancialRecordTrack::query()->update(['created_at' => now()->subMinutes(5)]);
 
         $item->delete();
 
