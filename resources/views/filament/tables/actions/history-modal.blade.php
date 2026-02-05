@@ -1,5 +1,6 @@
 <div class="history-modal-container">
     <style>
+        [x-cloak] { display: none !important; }
         .history-modal-container {
             font-family: inherit;
             overflow-x: auto;
@@ -173,7 +174,7 @@
     <table>
         <thead>
             <tr>
-                <th scope="col" style="width: 15%;">Waktu Tracking</th>
+                <th scope="col" style="width: 15%;">Waktu</th>
                 <th scope="col" style="width: 45%;">Data</th>
                 <th scope="col" style="width: 40%;">Detail Perubahan</th>
             </tr>
@@ -202,21 +203,33 @@
                             @endphp
 
                             <!-- Income Section -->
-                            <div class="snapshot-card">
-                                <div class="snapshot-header income">
-                                    <svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            <div class="snapshot-card"
+                                 x-data="{
+                                     expanded: localStorage.getItem('snap_in_{{ $track->id }}') === 'true',
+                                     toggle() { this.expanded = !this.expanded; localStorage.setItem('snap_in_{{ $track->id }}', this.expanded); }
+                                 }"
+                            >
+                                <div class="snapshot-header income cursor-pointer hover:opacity-80 transition" @click="toggle()">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                        </svg>
+                                        Pemasukan
+                                    </div>
+                                    <svg class="icon-sm transform transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                     </svg>
-                                    Pemasukan
                                 </div>
                                 <div class="snapshot-body">
-                                    <div class="snapshot-row">
-                                        <span class="snapshot-label">Fixed Income</span>
-                                        <span class="snapshot-value">Rp {{ number_format($snap['income_fixed'] ?? 0, 0, ',', '.') }}</span>
-                                    </div>
-                                    <div class="snapshot-row">
-                                        <span class="snapshot-label">BOS</span>
-                                        <span class="snapshot-value">Rp {{ number_format($snap['income_bos'] ?? 0, 0, ',', '.') }}</span>
+                                    <div x-cloak x-show="expanded" x-transition.duration.300ms class="space-y-1 mb-2">
+                                        <div class="snapshot-row">
+                                            <span class="snapshot-label">Fixed Income</span>
+                                            <span class="snapshot-value">Rp {{ number_format($snap['income_fixed'] ?? 0, 0, ',', '.') }}</span>
+                                        </div>
+                                        <div class="snapshot-row">
+                                            <span class="snapshot-label">BOS</span>
+                                            <span class="snapshot-value">Rp {{ number_format($snap['income_bos'] ?? 0, 0, ',', '.') }}</span>
+                                        </div>
                                     </div>
                                     <div class="snapshot-total" style="color: #047857;">
                                         <span>Total Pemasukan</span>
@@ -226,22 +239,34 @@
                             </div>
 
                             <!-- Expense Section -->
-                            <div class="snapshot-card">
-                                <div class="snapshot-header expense">
-                                    <svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                            <div class="snapshot-card"
+                                 x-data="{
+                                     expanded: localStorage.getItem('snap_out_{{ $track->id }}') === 'true',
+                                     toggle() { this.expanded = !this.expanded; localStorage.setItem('snap_out_{{ $track->id }}', this.expanded); }
+                                 }"
+                            >
+                                <div class="snapshot-header expense cursor-pointer hover:opacity-80 transition" @click="toggle()">
+                                    <div class="flex items-center gap-2 flex-1">
+                                        <svg class="icon-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                                        </svg>
+                                        Pengeluaran
+                                    </div>
+                                    <svg class="icon-sm transform transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                     </svg>
-                                    Pengeluaran
                                 </div>
                                 <div class="snapshot-body">
-                                    @forelse($expenses as $item)
-                                        <div class="snapshot-row">
-                                            <span class="snapshot-label">{{ $item['description'] ?? '-' }}</span>
-                                            <span class="snapshot-value">Rp {{ number_format($item['amount'] ?? 0, 0, ',', '.') }}</span>
-                                        </div>
-                                    @empty
-                                        <div class="text-center text-gray-400 italic py-2">Tidak ada data pengeluaran</div>
-                                    @endforelse
+                                    <div x-cloak x-show="expanded" x-transition.duration.300ms class="space-y-1 mb-2">
+                                        @forelse($expenses as $item)
+                                            <div class="snapshot-row">
+                                                <span class="snapshot-label">{{ $item['description'] ?? '-' }}</span>
+                                                <span class="snapshot-value">Rp {{ number_format($item['amount'] ?? 0, 0, ',', '.') }}</span>
+                                            </div>
+                                        @empty
+                                            <div class="text-center text-gray-400 italic py-2">Tidak ada data pengeluaran</div>
+                                        @endforelse
+                                    </div>
                                     <div class="snapshot-total" style="color: #b91c1c;">
                                         <span>Total Pengeluaran</span>
                                         <span>Rp {{ number_format($expenseTotal, 0, ',', '.') }}</span>
