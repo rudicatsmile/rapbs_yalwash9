@@ -26,7 +26,7 @@ class RealizationForm
                 Section::make('Header')
                     ->schema([
                         Toggle::make('status_realisasi')
-                            ->label('Status Aktif')
+                            ->label('Status Pelaporan')
                             ->onIcon('heroicon-m-check')
                             ->offIcon('heroicon-m-x-mark')
                             ->onColor('success')
