@@ -4,7 +4,10 @@ namespace App\Providers;
 
 use Filament\Pages\Page;
 use Filament\Support\Enums\Alignment;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use App\Policies\MediaPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -21,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(Media::class, MediaPolicy::class);
+        
         //
         // Page::formActionsAlignment(Alignment::Right);
     }
