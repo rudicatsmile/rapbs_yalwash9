@@ -63,6 +63,23 @@ Modul ini dirancang untuk membantu Anda mencatat rencana pemasukan dan pengeluar
 5.  Klik **Save Changes**.
 6.  Sistem akan menyimpan data dan mengarahkan kembali ke tabel daftar realisasi dengan notifikasi sukses.
 
+### 4. Sistem Locking Realisasi (Baru)
+
+Sistem ini menerapkan penguncian data untuk menjaga integritas laporan keuangan:
+
+- **Status Kunci**: Ketika `status_realisasi` diset ke `1` (Final/Locked).
+- **Pembatasan**: User dengan role `User` **TIDAK DAPAT** mengedit data tersebut.
+- **Indikator Visual**: Tombol edit akan berubah menjadi abu-abu dan tidak dapat diklik, disertai tooltip "Data dikunci (Final)".
+- **Hak Akses Admin**: User dengan role `Super Admin`, `Admin`, atau `Editor` tetap dapat mengedit data meskipun dalam status terkunci.
+
+### 5. Histori Perubahan (Tracking)
+
+Setiap perubahan data (Tambah, Edit, Hapus) pada **Financial Records** dan **Realisasi** kini tercatat secara otomatis:
+
+- **Akses Histori**: Klik tombol **History** di pojok kanan atas tabel.
+- **Informasi**: Menampilkan siapa yang mengubah, kapan, jenis aksi, dan detail perubahan (data lama vs data baru).
+- **Navigasi**: Gunakan pagination untuk melihat riwayat yang lebih lama.
+
 ## Struktur Menu & Hak Akses
 
 Fitur ini telah diintegrasikan ke sidebar utama dengan spesifikasi berikut:

@@ -46,6 +46,14 @@ class RealizationPolicy
             }
         }
 
+        // Check if status_realisasi is locked (1)
+        if ($realization->status_realisasi == 1) {
+            // Only Super Admin, Admin, and Editor can edit locked realization records
+            if (!$user->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])) {
+                return Response::deny('Akses ditolak - Data realisasi telah dikunci (Final) dan hanya dapat diedit oleh Admin/Editor.');
+            }
+        }
+
         return $user->can('Update:FinancialRecord')
             ? Response::allow()
             : Response::deny('You do not have permission to update this record.');

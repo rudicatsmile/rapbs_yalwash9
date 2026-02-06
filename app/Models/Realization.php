@@ -58,4 +58,9 @@ class Realization extends Model
     {
         return $this->hasMany(ExpenseItem::class, 'financial_record_id');
     }
+
+    public function realizationTracks(): HasMany
+    {
+        return $this->hasMany(RealizationTrack::class, 'financial_record_id');
+    }
 }

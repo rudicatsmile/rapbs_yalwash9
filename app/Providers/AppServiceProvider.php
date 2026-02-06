@@ -9,7 +9,9 @@ use Illuminate\Support\ServiceProvider;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use App\Policies\MediaPolicy;
 use App\Models\FinancialRecord;
+use App\Models\Realization;
 use App\Observers\FinancialRecordObserver;
+use App\Observers\RealizationObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Media::class, MediaPolicy::class);
         FinancialRecord::observe(FinancialRecordObserver::class);
+        Realization::observe(RealizationObserver::class);
         
         //
         // Page::formActionsAlignment(Alignment::Right);
