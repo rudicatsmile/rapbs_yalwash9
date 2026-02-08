@@ -80,32 +80,33 @@ Setiap perubahan data (Tambah, Edit, Hapus) pada **Financial Records** dan **Rea
 - **Informasi**: Menampilkan siapa yang mengubah, kapan, jenis aksi, dan detail perubahan (data lama vs data baru).
 - **Navigasi**: Gunakan pagination untuk melihat riwayat yang lebih lama.
 
-## Struktur Menu & Hak Akses
+### 6. Dashboard Laporan Keuangan
 
-Fitur ini telah diintegrasikan ke sidebar utama dengan spesifikasi berikut:
+Dashboard interaktif tersedia untuk menganalisis kinerja keuangan secara visual dan tabular.
 
-- **Grup Menu**: `Financial Management`
-- **Label Menu**: `RAPB Sekolah`
-- **Ikon**: `Heroicon::OutlinedBanknotes`
-- **Urutan**: Prioritas utama dalam grup (Sort: 1)
+- **Akses**: Menu `Dashboard Laporan Keuangan` di grup `Financial Management`.
+- **Fitur Filter**:
+    - **Tahun**: Pilih tahun anggaran.
+    - **Periode**: Pilih Kuartal (Q1-Q4) atau Setahun Penuh.
+    - **Departemen**: Filter khusus untuk laporan detail per departemen.
+- **Komponen Laporan**:
+    1.  **Rencana Penerimaan & Pengeluaran**: Grafik batang dan tabel ringkasan per departemen.
+    2.  **Tren Realisasi**: Grafik garis tren realisasi bulanan dan tabel pencapaian.
+    3.  **Perbandingan (Plan vs Real)**: Grafik kombinasi dan tabel selisih.
+    4.  **Detail Per Departemen**:
+        - **Komposisi Anggaran**: Pie chart sumber dana (BOS vs Mandiri).
+        - **Pola Realisasi**: Grafik area akumulasi realisasi.
+        - **Analisis Varians**: Tabel detail item dengan highlight jika selisih > 10%.
+- **Export Data**: Klik tombol **Export Excel/CSV** pada tabel untuk mengunduh laporan.
 
-### Hak Akses (Permissions)
+### 7. Integrasi Dashboard pada Manajemen Role
 
-Akses ke menu ini dikontrol oleh role dan permission berikut:
+Ringkasan kinerja keuangan juga ditampilkan langsung pada halaman pembuatan dan pengeditan Role (`Shield > Roles`).
 
-- `ViewAny:FinancialRecord`: Mengizinkan user melihat menu di sidebar dan mengakses halaman index.
-- `Create:FinancialRecord`: Mengizinkan user membuat data baru.
-- `Update:FinancialRecord`: Mengizinkan user mengedit data.
-- `Delete:FinancialRecord`: Mengizinkan user menghapus data.
-
-Pastikan user memiliki role yang mencakup permission di atas agar menu muncul di sidebar.
-
-### Kontrol Akses Berbasis Departemen
-
-Untuk pengguna dengan role `user`, sistem menerapkan pembatasan otomatis:
-
-1.  **View**: User hanya dapat melihat data RAPB Sekolah yang terkait dengan departemen mereka.
-2.  **Create/Edit**: Field **Departemen** akan otomatis terisi dan terkunci sesuai dengan departemen user yang sedang login.
-3.  **Security**: User tidak dapat mengakses data departemen lain melalui URL atau manipulasi form.
-
-User dengan role `super_admin` atau `admin` memiliki akses penuh ke semua data departemen.
+- **Lokasi**: Bagian bawah halaman Create Role dan Edit Role.
+- **Konten**:
+    - **Overview Stats**: Total Anggaran, Pengeluaran, Realisasi, dan Sisa Anggaran.
+    - **Grafik Rencana**: Visualisasi perbandingan rencana penerimaan vs pengeluaran.
+    - **Grafik Realisasi**: Tren realisasi pengeluaran.
+    - **Tabel Varians** (Hanya di Edit Page): Detail selisih anggaran per departemen.
+- **Keamanan**: Hanya pengguna dengan hak akses `view_financial_dashboard` yang dapat melihat widget ini.
