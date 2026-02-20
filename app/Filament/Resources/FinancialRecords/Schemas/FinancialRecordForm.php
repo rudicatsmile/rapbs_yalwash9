@@ -53,6 +53,32 @@ class FinancialRecordForm
                             ->label('Tanggal')
                             ->required()
                             ->default(now()),
+                        Select::make('month')
+                            ->label('Bulan')
+                            ->options([
+                                '1' => 'Januari',
+                                '2' => 'Februari',
+                                '3' => 'Maret',
+                                '4' => 'April',
+                                '5' => 'Mei',
+                                '6' => 'Juni',
+                                '7' => 'Juli',
+                                '8' => 'Agustus',
+                                '9' => 'September',
+                                '10' => 'Oktober',
+                                '11' => 'November',
+                                '12' => 'Desember',
+                            ])
+                            ->default(fn() => (string) now()->month)
+                            ->required()
+                            ->dehydrated()
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
+                                $allowed = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+                                if (!in_array((string) $state, $allowed, true)) {
+                                    $set('month', (string) now()->month);
+                                }
+                            }),
                         TextInput::make('record_name')
                             ->label('Nama History')
                             ->required()
@@ -82,19 +108,28 @@ class FinancialRecordForm
                             ])
                             ->columnSpanFull(),
                         TextInput::make('income_percentage')
-                            ->label('Resiko tidak dibayar (%)')
-                            ->numeric()
-                            ->suffix('%')
+                            ->label('Resiko tidak dibayar')
+                            ->prefix('Rp')
                             ->default(0)
-                            ->minValue(0)
-                            ->maxValue(100)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function (Get $get, Set $set) {
+                            ->stripCharacters('.')
+                            ->live(debounce: 500)
+                            ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
+                                $floatValue = self::parseMoney($state);
+                                if ($floatValue < 0) {
+                                    $floatValue = 0;
+                                }
+                                $set('income_percentage', number_format($floatValue, 0, ',', '.'));
                                 self::calculateIncomeFixed($get, $set);
                             })
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                            ->extraInputAttributes([
+                                'inputmode' => 'numeric',
+                                'oninput' => "let v = this.value.replace(/[^0-9,]/g, ''); let p = v.split(','); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); this.value = p.join(',');",
+                            ])
                             ->columnSpanFull(),
                         TextInput::make('income_fixed')
-                            ->label('Pemasukan Tetap (Rp)')
+                            ->label('Pemasukan (Rp) - Resiko tidak dibayar')
                             ->prefix('Rp')
                             ->readOnly()
                             ->dehydrated()
@@ -125,8 +160,30 @@ class FinancialRecordForm
                                 'inputmode' => 'numeric',
                                 'oninput' => "let v = this.value.replace(/[^0-9,]/g, ''); let p = v.split(','); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); this.value = p.join(',');",
                             ])
-                            ->columnSpanFull(),
-                    ])->columns(1),
+                            ->columnSpan(1),
+                        TextInput::make('income_bos_other')
+                            ->label('Pemasukan lainnya (Rp)')
+                            ->placeholder('Masukkan rencana pemasukan lainnya')
+                            ->prefix('Rp')
+                            ->default(0)
+                            ->stripCharacters('.')
+                            ->live(debounce: 500)
+                            ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
+                                $floatValue = self::parseMoney($state);
+                                if ($floatValue < 0) {
+                                    $floatValue = 0;
+                                }
+                                $set('income_bos_other', number_format($floatValue, 0, ',', '.'));
+                                self::calculateTotalIncome($get, $set);
+                            })
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                            ->extraInputAttributes([
+                                'inputmode' => 'numeric',
+                                'oninput' => "let v = this.value.replace(/[^0-9,]/g, ''); let p = v.split(','); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); this.value = p.join(',');",
+                            ])
+                            ->columnSpan(1),
+                    ])->columns(2),
 
                 Section::make('Total Pemasukan')
                     ->schema([
@@ -197,20 +254,8 @@ class FinancialRecordForm
                                     ->required()
                                     ->columnSpan([
                                         'default' => 12,
-                                        'md' => 5,
-                                        'lg' => 5,
-                                    ]),
-                                Select::make('source_type')
-                                    ->label('Sumber Dana')
-                                    ->options([
-                                        'Mandiri' => 'Mandiri',
-                                        'BOS' => 'BOS',
-                                    ])
-                                    ->required()
-                                    ->columnSpan([
-                                        'default' => 12,
-                                        'md' => 3,
-                                        'lg' => 3,
+                                        'md' => 6,
+                                        'lg' => 6,
                                     ]),
                                 TextInput::make('amount')
                                     ->label('Jumlah')
@@ -231,8 +276,8 @@ class FinancialRecordForm
                                     ])
                                     ->columnSpan([
                                         'default' => 12,
-                                        'md' => 4,
-                                        'lg' => 4,
+                                        'md' => 6,
+                                        'lg' => 6,
                                     ]),
                             ])
                             ->columns([
@@ -244,25 +289,36 @@ class FinancialRecordForm
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set) {
                                 self::calculateTotalExpense($get, $set);
+                            })
+                            ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
+                                $data['source_type'] = 'Mandiri';
+                                return $data;
+                            })
+                            ->mutateRelationshipDataBeforeSaveUsing(function (array $data): array {
+                                $data['source_type'] = 'Mandiri';
+                                return $data;
                             }),
-                    ]),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 
-    protected static function calculateIncomeFixed(Get $get, Set $set): void
+    protected static function calculateIncomeFixed($get, $set): void
     {
         $amount = self::parseMoney($get('income_amount'));
-        $percentage = (float) $get('income_percentage');
+        $risk = self::parseMoney($get('income_percentage'));
 
-        if ($amount < 0)
+        if ($amount < 0) {
             $amount = 0;
-        if ($percentage < 0)
-            $percentage = 0;
-        if ($percentage > 100)
-            $percentage = 100; // Validation 0-100
+        }
+        if ($risk < 0) {
+            $risk = 0;
+        }
+        if ($risk > $amount) {
+            $risk = $amount;
+        }
 
-        // Formula: Pemasukan - (Pemasukan x (persentase/100))
-        $fixed = $amount - ($amount * ($percentage / 100));
+        $fixed = $amount - $risk;
 
         $set('income_fixed', number_format($fixed, 0, ',', '.'));
         self::calculateTotalIncome($get, $set);
@@ -272,8 +328,19 @@ class FinancialRecordForm
     {
         $incomeFixed = self::parseMoney($get('income_fixed'));
         $incomeBos = self::parseMoney($get('income_bos'));
+        $incomeBosOther = self::parseMoney($get('income_bos_other'));
 
-        $total = $incomeFixed + $incomeBos;
+        if ($incomeFixed < 0) {
+            $incomeFixed = 0;
+        }
+        if ($incomeBos < 0) {
+            $incomeBos = 0;
+        }
+        if ($incomeBosOther < 0) {
+            $incomeBosOther = 0;
+        }
+
+        $total = $incomeFixed + $incomeBos + $incomeBosOther;
 
         $set('income_total', number_format($total, 0, ',', '.'));
     }

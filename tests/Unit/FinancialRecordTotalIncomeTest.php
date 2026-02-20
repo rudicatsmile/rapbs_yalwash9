@@ -31,22 +31,20 @@ class FinancialRecordTotalIncomeTest extends TestCase
         return [$get, $set, $wrapper];
     }
 
-    public function test_calculate_total_income_sums_fixed_and_bos_to_income_total()
+    public function test_calculate_total_income_sums_fixed_bos_and_other_to_income_total()
     {
-        // Setup initial data
         $data = [
-            'income_fixed' => '1.000.000', // String formatted
-            'income_bos' => '500.000',     // String formatted
+            'income_fixed' => '1.000.000',
+            'income_bos' => '500.000',
+            'income_bos_other' => '250.000',
             'income_total' => 0,
         ];
 
         [$get, $set, $wrapper] = $this->createMockGetSet($data);
 
-        // Call the calculation method
         $this->callStaticMethod('calculateTotalIncome', [$get, $set]);
 
-        // Assert that income_total is updated, not total_income_display
-        $this->assertEquals('1.500.000', $wrapper->data['income_total']);
+        $this->assertEquals('1.750.000', $wrapper->data['income_total']);
     }
 
     public function test_calculate_total_income_handles_null_or_empty_values()
@@ -54,6 +52,7 @@ class FinancialRecordTotalIncomeTest extends TestCase
         $data = [
             'income_fixed' => null,
             'income_bos' => '',
+            'income_bos_other' => '',
             'income_total' => 0,
         ];
 
@@ -69,6 +68,7 @@ class FinancialRecordTotalIncomeTest extends TestCase
         $data = [
             'income_fixed' => '0',
             'income_bos' => '0',
+            'income_bos_other' => '0',
             'income_total' => 0,
         ];
 
@@ -81,7 +81,6 @@ class FinancialRecordTotalIncomeTest extends TestCase
 
     public function test_income_total_formatting_and_parsing()
     {
-        // Test parsing function which is used in dehydrateStateUsing
         $input = '3.750.000';
         $parsed = $this->callStaticMethod('parseMoney', [$input]);
 
