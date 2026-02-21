@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\RealizationResource\Pages;
 
 use App\Filament\Resources\RealizationResource;
+use App\Models\User;
 use Filament\Actions;
+use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
@@ -102,5 +104,50 @@ class EditRealization extends EditRecord
             ->body($value ? 'Realisasi ditandai siap pelaporan.' : 'Realisasi dikembalikan ke belum pelaporan.')
             ->success()
             ->send();
+
+        if ($value) {
+            $roles = ['super_admin', 'admin', 'editor'];
+            $users = User::role($roles)->get();
+
+            if ($users->isNotEmpty()) {
+                $realizationId = $this->record->id;
+                $departmentName = $this->record->department?->name ?? '-';
+                $recordName = $this->record->record_name ?? '-';
+                $monthNumber = (int) ($this->record->month ?? 0);
+
+                $monthNames = [
+                    1 => 'Januari',
+                    2 => 'Februari',
+                    3 => 'Maret',
+                    4 => 'April',
+                    5 => 'Mei',
+                    6 => 'Juni',
+                    7 => 'Juli',
+                    8 => 'Agustus',
+                    9 => 'September',
+                    10 => 'Oktober',
+                    11 => 'November',
+                    12 => 'Desember',
+                ];
+
+                $monthName = $monthNames[$monthNumber] ?? '-';
+
+                $body = "Realisasi #{$realizationId} siap untuk pelaporan.\n"
+                    . "Departemen: {$departmentName}\n"
+                    . "Nama History: {$recordName}\n"
+                    . "Bulan: {$monthName}";
+
+                $databaseNotification = Notification::make()
+                    ->title('Realisasi siap pelaporan')
+                    ->body($body)
+                    ->info()
+                    ->toDatabase();
+
+                foreach ($users as $recipient) {
+                    $recipient->notifyNow($databaseNotification);
+                    event(new DatabaseNotificationsSent($recipient));
+                }
+            }
+        }
     }
 }

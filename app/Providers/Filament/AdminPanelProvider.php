@@ -97,6 +97,7 @@ class AdminPanelProvider extends PanelProvider
                     ->label('Filament Shield'),
             ])
             ->globalSearch(false)
-            ->databaseNotifications();
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('15s');
     }
 }
