@@ -21,6 +21,8 @@ use Filament\Actions\ExportAction;
 use App\Filament\Exports\FinancialRecordExporter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Writer;
 
 class RealizationTable
 {
@@ -95,6 +97,88 @@ class RealizationTable
                     ->color(fn($record) => $record?->status_realisasi == 1 && !auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor']) ? 'gray' : 'primary')
                     ->disabled(fn($record) => (!$record) || ($record->status_realisasi == 1 && !auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])))
                     ->tooltip(fn($record) => $record?->status_realisasi == 1 && !auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor']) ? 'Data dikunci (Final)' : 'Input Realisasi'),
+                Action::make('download_excel')
+                    ->label('Download Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->tooltip('Download Record Details')
+                    ->iconButton()
+                    ->action(function ($record) {
+                        try {
+                            return response()->streamDownload(function () use ($record) {
+                                $writer = new Writer();
+                                $writer->openToFile('php://output');
+
+                                $headers = [
+                                    'Tanggal',
+                                    'Departemen',
+                                    'Nama Record',
+                                    'Total Anggaran',
+                                    'Total Realisasi',
+                                    'Sisa Saldo',
+                                ];
+
+                                $writer->addRow(Row::fromValues($headers));
+
+                                $totalExpense = (float) $record->total_expense;
+                                $totalRealization = (float) $record->total_realization;
+                                $balance = $totalExpense - $totalRealization;
+
+                                $row = [
+                                    $record->record_date ? $record->record_date->format('d-m-Y') : '-',
+                                    $record->department->name ?? '-',
+                                    $record->record_name,
+                                    number_format($totalExpense, 2, ',', '.'),
+                                    number_format($totalRealization, 2, ',', '.'),
+                                    number_format($balance, 2, ',', '.'),
+                                ];
+
+                                $writer->addRow(Row::fromValues($row));
+
+                                $writer->close();
+                            }, 'realisasi_' . $record->id . '_' . ($record->record_date ? $record->record_date->format('Y-m-d') : 'no-date') . '.xls');
+                        } catch (\Throwable $e) {
+                            Log::error('Gagal mengunduh Excel realisasi', [
+                                'exception' => $e,
+                                'record_id' => $record->id ?? null,
+                            ]);
+
+                            Notification::make()
+                                ->title('Gagal mengunduh Excel')
+                                ->body('Terjadi kesalahan saat menghasilkan file Excel. Silakan coba lagi.')
+                                ->danger()
+                                ->persistent()
+                                ->send();
+
+                            return null;
+                        }
+                    }),
+                Action::make('pdf')
+                    ->label('PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('warning')
+                    ->tooltip('Download PDF')
+                    ->iconButton()
+                    ->action(function ($record) {
+                        try {
+                            return response()->streamDownload(function () use ($record) {
+                                echo Pdf::loadView('pdf.financial_record', ['record' => $record])->output();
+                            }, 'realisasi_' . $record->id . '_' . ($record->record_date ? $record->record_date->format('Y-m-d') : 'no-date') . '.pdf');
+                        } catch (\Throwable $e) {
+                            Log::error('Gagal mengunduh PDF realisasi', [
+                                'exception' => $e,
+                                'record_id' => $record->id ?? null,
+                            ]);
+
+                            Notification::make()
+                                ->title('Gagal mengunduh PDF')
+                                ->body('Terjadi kesalahan saat menghasilkan file PDF. Silakan coba lagi.')
+                                ->danger()
+                                ->persistent()
+                                ->send();
+
+                            return null;
+                        }
+                    }),
             ])
             ->bulkActions([
                 // No bulk actions for Realization typically, or keep delete?
