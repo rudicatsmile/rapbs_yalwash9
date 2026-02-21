@@ -17,7 +17,9 @@ class DashboardTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Role::create(['name' => 'super_admin', 'guard_name' => 'web']);
+        if (!Role::where('name', 'super_admin')->where('guard_name', 'web')->exists()) {
+            Role::create(['name' => 'super_admin', 'guard_name' => 'web']);
+        }
     }
 
     public function test_financial_stats_overview_widget_can_be_rendered()

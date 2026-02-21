@@ -4,6 +4,7 @@ namespace App\Filament\Resources\RealizationResource\Pages;
 
 use App\Filament\Resources\RealizationResource;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -34,5 +35,51 @@ class EditRealization extends EditRecord
         return [
             // Actions\DeleteAction::make(),
         ];
+    }
+
+    public function updatedDataStatusRealisasi($value): void
+    {
+        if (!$this->record) {
+            return;
+        }
+
+        $user = Auth::user();
+
+        if (!$user || !$user->can('update', $this->record)) {
+            $this->data['status_realisasi'] = (bool) $this->record->status_realisasi;
+
+            Notification::make()
+                ->title('Akses ditolak')
+                ->body('Anda tidak memiliki izin untuk mengubah status pelaporan realisasi ini.')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        if ($value) {
+            $this->record->refresh();
+
+            if ((float) $this->record->total_realization <= 0) {
+                $this->data['status_realisasi'] = false;
+
+                Notification::make()
+                    ->title('Data realisasi belum lengkap')
+                    ->body('Input dan simpan realisasi terlebih dahulu sebelum menandai siap pelaporan.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+        }
+
+        $this->record->status_realisasi = (bool) $value;
+        $this->record->save();
+
+        Notification::make()
+            ->title('Status pelaporan diperbarui')
+            ->body($value ? 'Realisasi ditandai siap pelaporan.' : 'Realisasi dikembalikan ke belum pelaporan.')
+            ->success()
+            ->send();
     }
 }

@@ -3,17 +3,18 @@
 namespace App\Filament\Resources\RealizationResource\Schemas;
 
 use Filament\Forms\Components\DatePicker;
-use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Forms\Components\Toggle;
 use Illuminate\Support\HtmlString;
 
 class RealizationForm
@@ -25,16 +26,6 @@ class RealizationForm
             ->components([
                 Section::make('Header')
                     ->schema([
-                        Toggle::make('status_realisasi')
-                            ->label('Status Pelaporan')
-                            ->onIcon('heroicon-m-check')
-                            ->offIcon('heroicon-m-x-mark')
-                            ->onColor('success')
-                            ->offColor('danger')
-                            ->default(false)
-                            ->visible(fn() => auth()->user() && !auth()->user()->hasRole('user'))
-                            ->disabled(fn() => auth()->user() && auth()->user()->hasRole('user'))
-                            ->columnSpanFull(),
                         Select::make('department_id')
                             ->relationship('department', 'name')
                             ->label('Departemen')
@@ -255,6 +246,43 @@ class RealizationForm
                                         'title' => 'Selisih antara Total Anggaran dikurangi Total Realisasi'
                                     ]),
                             ]),
+                    ]),
+
+                Section::make('Lampiran Realisasi')
+                    ->columnSpanFull()
+                    ->visible(fn($record) => $record && $record->exists)
+                    ->schema([
+                        Toggle::make('status_realisasi')
+                            ->label('Status Siap Pelaporan')
+                            ->onIcon('heroicon-m-check')
+                            ->offIcon('heroicon-m-x-mark')
+                            ->onColor('success')
+                            ->offColor('gray')
+                            ->default(false)
+                            ->hint('Tandai realisasi siap dilaporkan setelah data realisasi lengkap.')
+                            ->hintIcon('heroicon-m-question-mark-circle')
+                            ->columnSpanFull(),
+                        SpatieMediaLibraryFileUpload::make('realization_attachments')
+                            ->label('Upload Lampiran Realisasi')
+                            ->collection('realization-attachments')
+                            ->multiple()
+                            ->enableDownload()
+                            ->enableOpen()
+                            ->reorderable()
+                            ->maxSize(10240)
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'image/jpeg',
+                                'image/png',
+                                'application/zip',
+                            ])
+                            ->helperText('Unggah dan lihat dokumen pendukung realisasi. Tersedia untuk semua role.')
+                            ->preserveFilenames()
+                            ->disk('public'),
                     ]),
             ]);
     }

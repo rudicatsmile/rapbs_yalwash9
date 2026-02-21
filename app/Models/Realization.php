@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Realization extends Model
+class Realization extends Model implements HasMedia
 {
-    use HasFactory;
+    use HasFactory, InteractsWithMedia;
 
     protected $table = 'financial_records';
 
@@ -62,5 +64,22 @@ class Realization extends Model
     public function realizationTracks(): HasMany
     {
         return $this->hasMany(RealizationTrack::class, 'financial_record_id');
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('realization-attachments')
+            ->useDisk('public')
+            ->acceptsMimeTypes([
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'image/jpeg',
+                'image/png',
+                'application/zip',
+                'text/plain',
+            ]);
     }
 }

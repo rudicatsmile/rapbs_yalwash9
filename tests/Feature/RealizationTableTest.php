@@ -18,7 +18,9 @@ class RealizationTableTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Role::create(['name' => 'super_admin']);
+        if (! Role::where('name', 'super_admin')->exists()) {
+            Role::create(['name' => 'super_admin']);
+        }
     }
 
     public function test_realization_table_columns_exist()
@@ -48,5 +50,49 @@ class RealizationTableTest extends TestCase
             ->assertTableColumnFormattedStateSet('total_balance', 'Rp 750.000', record: $record)
             ->assertTableColumnFormattedStateSet('total_expense', 'Rp 1.000.000', record: $record)
             ->assertTableColumnFormattedStateSet('total_realization', 'Rp 250.000', record: $record);
+    }
+
+    public function test_realization_table_shows_attachments_count()
+    {
+        $user = User::factory()->create();
+        $user->assignRole('super_admin');
+
+        $record = FinancialRecord::factory()->create();
+
+        $realization = \App\Models\Realization::findOrFail($record->id);
+
+        \Spatie\MediaLibrary\MediaCollections\Models\Media::create([
+            'model_type' => \App\Models\Realization::class,
+            'model_id' => $realization->id,
+            'collection_name' => 'realization-attachments',
+            'name' => 'Test File 1',
+            'file_name' => 'test-file-1.pdf',
+            'disk' => 'public',
+            'mime_type' => 'application/pdf',
+            'size' => 1024,
+            'manipulations' => [],
+            'custom_properties' => [],
+            'generated_conversions' => [],
+            'responsive_images' => [],
+        ]);
+
+        \Spatie\MediaLibrary\MediaCollections\Models\Media::create([
+            'model_type' => \App\Models\Realization::class,
+            'model_id' => $realization->id,
+            'collection_name' => 'realization-attachments',
+            'name' => 'Test File 2',
+            'file_name' => 'test-file-2.pdf',
+            'disk' => 'public',
+            'mime_type' => 'application/pdf',
+            'size' => 2048,
+            'manipulations' => [],
+            'custom_properties' => [],
+            'generated_conversions' => [],
+            'responsive_images' => [],
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ListRealizations::class)
+            ->assertTableColumnFormattedStateSet('media_count', '2 file', record: $realization);
     }
 }

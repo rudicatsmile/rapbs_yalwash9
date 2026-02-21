@@ -19,7 +19,9 @@ class RealizationTest extends TestCase
     {
         parent::setUp();
         // Create role
-        Role::create(['name' => 'super_admin', 'guard_name' => 'web']);
+        if (!Role::where('name', 'super_admin')->where('guard_name', 'web')->exists()) {
+            Role::create(['name' => 'super_admin', 'guard_name' => 'web']);
+        }
     }
 
     public function test_realization_status_realisasi_toggle()
@@ -30,6 +32,7 @@ class RealizationTest extends TestCase
         $record = FinancialRecord::factory()->create([
             'user_id' => $user->id,
             'status_realisasi' => false,
+            'total_realization' => 100000,
         ]);
 
         Livewire::actingAs($user)

@@ -51,6 +51,11 @@ class RealizationTable
                     ->label('Nama History')
                     ->searchable()
                     ->extraAttributes(fn($record) => ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user')) ? ['title' => 'Access Denied'] : []),
+                TextColumn::make('media_count')
+                    ->label('Lampiran')
+                    ->badge()
+                    ->state(fn($record) => method_exists($record, 'media') ? $record->media()->count() : 0)
+                    ->formatStateUsing(fn($state) => $state && $state > 0 ? $state . ' file' : '-'),
                 TextColumn::make('total_expense')
                     ->label('Total Anggaran')
                     ->sortable()
