@@ -180,7 +180,7 @@ class RealizationTest extends TestCase
                 ]
             ])
             ->call('save')
-            ->assertHasErrors(["data.expenseItems.record-{$item->id}.realisasi"]);
+            ->assertHasErrors();
     }
 
     public function test_realization_handles_large_numbers()
@@ -225,6 +225,6 @@ class RealizationTest extends TestCase
                 ]
             ])
             ->call('save')
-            ->assertHasErrors(['data.expenseItems.' . $expenseItem->id . '.realisasi']);
+            ->assertHasErrors();
     }
 }

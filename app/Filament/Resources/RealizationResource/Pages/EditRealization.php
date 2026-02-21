@@ -30,6 +30,27 @@ class EditRealization extends EditRecord
         return 'Data berhasil disimpan';
     }
 
+    protected function getFormActions(): array
+    {
+        return [
+            Actions\Action::make('save')
+                ->label(__('filament-panels::resources/pages/edit-record.form.actions.save.label'))
+                ->submit('save')
+                ->keyBindings(['mod+s'])
+                ->disabled(function () {
+                    $data = $this->data ?? [];
+
+                    if (!is_array($data)) {
+                        return false;
+                    }
+
+                    $balance = isset($data['total_balance']) ? (float) $data['total_balance'] : 0;
+
+                    return $balance < 0;
+                }),
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [

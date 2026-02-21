@@ -139,48 +139,41 @@ class RealizationForm
                                     ->prefix('Rp')
                                     ->default(0)
                                     ->stripCharacters('.')
-                                    ->live(debounce: 300)
+                                    ->live(debounce: 500)
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                        $realisasi = self::parseMoney($state);
-                                        $amount = self::parseMoney($get('amount'));
+                                        $rawRealisasi = self::parseMoney($state);
+                                        $realisasi = (float) $rawRealisasi;
 
-                                        $set('realisasi', number_format($realisasi, 0, ',', '.'));
+                                        if ($realisasi < 0) {
+                                            $realisasi = 0;
+                                        }
 
+                                        $amount = (float) self::parseMoney($get('amount'));
                                         $saldo = $amount - $realisasi;
-                                        $set('saldo', number_format($saldo, 0, ',', '.'));
 
-                                        // Recalculate Totals
-                                        $items = $get('../../expenseItems');
-                                        $totalExpense = 0;
-                                        $totalRealization = 0;
-                                        $totalBalance = 0;
+                                        $set('saldo', $saldo);
+
+                                        $items = $get('../../expenseItems') ?? [];
+                                        $totalExpense = 0.0;
+                                        $totalRealization = 0.0;
 
                                         foreach ($items as $item) {
-                                            $itemAmount = self::parseMoney($item['amount'] ?? 0);
-                                            $itemRealisasi = self::parseMoney($item['realisasi'] ?? 0);
-                                            // Recalculate saldo locally to ensure consistency
-                                            $itemSaldo = $itemAmount - $itemRealisasi;
+                                            $itemAmount = (float) self::parseMoney($item['amount'] ?? 0);
+                                            $itemRealisasi = (float) self::parseMoney($item['realisasi'] ?? 0);
+
+                                            if ($itemRealisasi < 0) {
+                                                $itemRealisasi = 0;
+                                            }
 
                                             $totalExpense += $itemAmount;
                                             $totalRealization += $itemRealisasi;
-                                            $totalBalance += $itemSaldo;
                                         }
 
-                                        $set('../../total_expense', number_format($totalExpense, 0, ',', '.'));
-                                        $set('../../total_realization', number_format($totalRealization, 0, ',', '.'));
-                                        $set('../../total_balance', number_format($totalBalance, 0, ',', '.'));
-                                    })
-                                    ->rule(function (Get $get) {
-                                        return function (string $attribute, $value, \Closure $fail) use ($get) {
-                                            $realisasi = self::parseMoney($value);
-                                            $amount = self::parseMoney($get('amount'));
-                                            if ($realisasi > $amount) {
-                                                $fail("Realisasi tidak boleh melebihi jumlah anggaran.");
-                                            }
-                                            if ($realisasi < 0) {
-                                                $fail("Realisasi tidak boleh negatif.");
-                                            }
-                                        };
+                                        $totalBalance = $totalExpense - $totalRealization;
+
+                                        $set('../../total_expense', $totalExpense);
+                                        $set('../../total_realization', $totalRealization);
+                                        $set('../../total_balance', $totalBalance);
                                     })
                                     ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                                     ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
@@ -243,7 +236,7 @@ class RealizationForm
                                     ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                                     ->extraInputAttributes([
                                         'style' => 'font-weight: bold',
-                                        'title' => 'Selisih antara Total Anggaran dikurangi Total Realisasi'
+                                        'title' => 'Selisih antara Total Anggaran dikurangi Total Realisasi',
                                     ]),
                             ]),
                     ]),
