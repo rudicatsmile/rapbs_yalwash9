@@ -17,6 +17,31 @@
     </style>
 </head>
 <body>
+    @php
+        $kepalaSekolah = \App\Models\SchoolOfficial::where('role', 'kepala_sekolah')
+            ->where(function ($query) use ($record) {
+                $query->where('department_id', $record->department_id)
+                      ->orWhereNull('department_id');
+            })
+            ->orderByRaw('department_id IS NULL')
+            ->first();
+
+        $bendaharaSekolah = \App\Models\SchoolOfficial::where('role', 'bendahara_sekolah')
+            ->where(function ($query) use ($record) {
+                $query->where('department_id', $record->department_id)
+                      ->orWhereNull('department_id');
+            })
+            ->orderByRaw('department_id IS NULL')
+            ->first();
+
+        $bendaharaYayasan = \App\Models\SchoolOfficial::where('role', 'kepala_departemen')
+            ->whereNull('department_id')
+            ->first();
+
+        $kepalaSekolahName = $kepalaSekolah?->name ?? '(Pejabat Kepala Sekolah belum diatur)';
+        $bendaharaSekolahName = $bendaharaSekolah?->name ?? '(Pejabat Bendahara Sekolah belum diatur)';
+        $bendaharaYayasanName = $bendaharaYayasan?->name ?? '(Pejabat Bendahara Yayasan belum diatur)';
+    @endphp
     <div class="header">
         <h2>YAYASAN AL-WATHONIYAH 9</h2>
         <h3>LAPORAN TRANSAKSI KEUANGAN</h3>
@@ -120,7 +145,32 @@
         </table>
     </div>
 
-    <div class="footer" style="margin-top: 50px; text-align: right; font-size: 10px; color: #666;">
+    <div class="section" style="margin-top: 40px;">
+        <table style="width: 100%; border: none; text-align: center; font-size: 12px;">
+            <tr>
+                <td style="border: none; width: 33%;"></td>
+                <td style="border: none; width: 33%;">Mengetahui,</td>
+                <td style="border: none; width: 33%;">Menyetujui,</td>
+            </tr>
+            <tr>
+                <td style="border: none;">Kepala Sekolah</td>
+                <td style="border: none;">Bendahara Sekolah</td>
+                <td style="border: none;">Bendahara Yayasan</td>
+            </tr>
+            <tr>
+                <td style="border: none; height: 60px;"></td>
+                <td style="border: none;"></td>
+                <td style="border: none;"></td>
+            </tr>
+            <tr>
+                <td style="border: none;"><strong>{{ $kepalaSekolahName }}</strong></td>
+                <td style="border: none;"><strong>{{ $bendaharaSekolahName }}</strong></td>
+                <td style="border: none;"><strong>{{ $bendaharaYayasanName }}</strong></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer" style="margin-top: 30px; text-align: right; font-size: 10px; color: #666;">
         <p>Dicetak otomatis oleh Sistem Ef-fin9 pada: {{ now()->format('d-m-Y H:i') }}</p>
     </div>
 </body>

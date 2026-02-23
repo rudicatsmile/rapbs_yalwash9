@@ -167,7 +167,7 @@ class RealizationTable
                         try {
                             return response()->streamDownload(function () use ($record) {
                                 echo Pdf::loadView('pdf.financial_record', ['record' => $record])->output();
-                            }, 'realisasi_' . $record->id . '_' . ($record->record_date ? $record->record_date->format('Y-m-d') : 'no-date') . '.pdf');
+                            }, 'realisasi_v2_' . $record->id . '_' . ($record->record_date ? $record->record_date->format('Y-m-d') : 'no-date') . '.pdf');
                         } catch (\Throwable $e) {
                             Log::error('Gagal mengunduh PDF realisasi', [
                                 'exception' => $e,
