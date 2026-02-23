@@ -194,7 +194,7 @@ class FinancialRecordsTable
             ->filters([
                 SelectFilter::make('department_id')
                     ->label('Departemen')
-                    ->relationship('department', 'name')
+                    ->relationship('department', 'name', fn(Builder $query) => $query->orderBy('urut'))
                     ->searchable()
                     ->preload()
                     ->placeholder('Semua Departemen')

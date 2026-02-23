@@ -41,6 +41,8 @@ class FinancialRecordForm
                                 if ($user && $user->hasRole('user') && !$user->hasRole(['super_admin', 'admin'])) {
                                     $query->where('id', $user->department_id);
                                 }
+
+                                $query->orderBy('urut');
                             })
                             ->label('Departemen')
                             ->searchable()
