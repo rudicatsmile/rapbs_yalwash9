@@ -65,7 +65,7 @@
                 <td class="text-right">Rp {{ number_format($record->income_bos, 0, ',', '.') }}</td>
             </tr>
             <tr class="bold" style="background-color: #f9fafb;">
-                <td>Total Pemasukan (Fixed + BOS)</td>
+                <td>Total Pemasukan</td>
                 <td class="text-right">Rp {{ number_format($record->income_total, 0, ',', '.') }}</td>
             </tr>
         </table>
@@ -78,8 +78,9 @@
                 <tr>
                     <th style="width: 30px;">No</th>
                     <th>Deskripsi</th>
-                    <th style="width: 100px;">Sumber Dana</th>
-                    <th class="text-right" style="width: 120px;">Jumlah</th>
+                    <th class="text-right" style="width: 120px;">Anggaran</th>
+                    <th class="text-right" style="width: 120px;">Realisasi</th>
+                    <th class="text-right" style="width: 120px;">Sisa</th>
                 </tr>
             </thead>
             <tbody>
@@ -87,17 +88,20 @@
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td>{{ $item->description }}</td>
-                    <td>{{ $item->source_type ?? '-' }}</td>
                     <td class="text-right">Rp {{ number_format($item->amount, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($item->realisasi ?? 0, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($item->saldo ?? (($item->amount ?? 0) - ($item->realisasi ?? 0)), 0, ',', '.') }}</td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="4" style="text-align: center;">Tidak ada data pengeluaran.</td>
+                    <td colspan="5" style="text-align: center;">Tidak ada data pengeluaran.</td>
                 </tr>
                 @endforelse
                 <tr class="bold" style="background-color: #f9fafb;">
-                    <td colspan="3" class="text-right">Total Pengeluaran</td>
+                    <td colspan="2" class="text-right">Total Pengeluaran</td>
                     <td class="text-right">Rp {{ number_format($record->total_expense, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($record->total_realization ?? 0, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($record->total_balance ?? ($record->total_expense - ($record->total_realization ?? 0)), 0, ',', '.') }}</td>
                 </tr>
             </tbody>
         </table>
@@ -107,7 +111,7 @@
         <table class="table">
              <tr class="bold" style="background-color: #e5e7eb;">
                 <td style="border: none;">SALDO AKHIR (BALANCE)</td>
-                <td style="border: none;" class="text-right">Rp {{ number_format($record->income_total - $record->total_expense, 0, ',', '.') }}</td>
+                <td style="border: none;" class="text-right">Rp {{ number_format($record->income_total - ($record->total_realization ?? 0), 0, ',', '.') }}</td>
             </tr>
         </table>
     </div>
