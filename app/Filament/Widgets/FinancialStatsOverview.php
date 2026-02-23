@@ -16,8 +16,23 @@ class FinancialStatsOverview extends BaseWidget
 
     protected function getStats(): array
     {
+        $user = auth()->user();
+
+        $baseQuery = FinancialRecord::query();
+
+        if ($user && $user->hasRole('user') && !$user->hasRole(['super_admin', 'admin', 'Admin', 'Super admin', 'editor', 'Editor'])) {
+            if ($user->department_id) {
+                $baseQuery->where('department_id', $user->department_id);
+            } else {
+                $baseQuery->whereRaw('1 = 0');
+            }
+        }
+
+        $approvedCount = (clone $baseQuery)->where('status', 1)->count();
+        $reportedCount = (clone $baseQuery)->where('status_realisasi', 1)->count();
+
         return [
-            Stat::make('Disetujui', FinancialRecord::where('status', 1)->count())
+            Stat::make('Disetujui', $approvedCount)
                 ->description('Data proposal yang telah disetujui')
                 ->descriptionIcon('heroicon-m-check-circle')
                 ->color('success')
@@ -26,7 +41,7 @@ class FinancialStatsOverview extends BaseWidget
                     'title' => 'Menampilkan jumlah total data dengan status disetujui (status = 1)',
                 ]),
 
-            Stat::make('Terlaporkan', FinancialRecord::where('status_realisasi', 1)->count())
+            Stat::make('Terlaporkan', $reportedCount)
                 ->description('Data realisasi yang telah dilaporkan')
                 ->descriptionIcon('heroicon-m-document-check')
                 ->color('primary')
