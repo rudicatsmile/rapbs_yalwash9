@@ -60,6 +60,49 @@ class EditRealization extends EditRecord
         ];
     }
 
+    protected function beforeSave(): void
+    {
+        $state = $this->form->getState();
+
+        $items = $state['expenseItems'] ?? [];
+
+        $totalExpense = 0.0;
+        $totalRealization = 0.0;
+
+        foreach ($items as $item) {
+            $amount = (float) ($item['amount'] ?? 0);
+            $realisasi = (float) ($item['realisasi'] ?? 0);
+
+            if ($realisasi < 0) {
+                $realisasi = 0;
+            }
+
+            $totalExpense += $amount;
+            $totalRealization += $realisasi;
+        }
+
+        $totalBalance = $totalExpense - $totalRealization;
+
+        $this->data['total_expense'] = $totalExpense;
+        $this->data['total_realization'] = $totalRealization;
+        $this->data['total_balance'] = $totalBalance;
+    }
+
+    public function save(bool $shouldRedirect = true, bool $shouldSendSavedNotification = true): void
+    {
+        $state = $this->form->getState();
+
+        $totalBalance = (float) ($state['total_balance'] ?? 0);
+
+        if ($totalBalance < 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'total_balance' => 'Total saldo tidak boleh negatif.',
+            ]);
+        }
+
+        parent::save($shouldRedirect, $shouldSendSavedNotification);
+    }
+
     public function updatedDataStatusRealisasi($value): void
     {
         if (!$this->record) {

@@ -16,6 +16,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Closure;
 
 class RealizationForm
 {
@@ -139,7 +140,9 @@ class RealizationForm
                                     ->prefix('Rp')
                                     ->default(0)
                                     ->stripCharacters('.')
-                                    ->live(debounce: 500)
+                                    ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                                    ->rule(['numeric', 'min:0'])
+                                    ->live(onBlur: true)
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                         $rawRealisasi = self::parseMoney($state);
                                         $realisasi = (float) $rawRealisasi;
@@ -175,7 +178,6 @@ class RealizationForm
                                         $set('../../total_realization', $totalRealization);
                                         $set('../../total_balance', $totalBalance);
                                     })
-                                    ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                                     ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                                     ->extraInputAttributes([
                                         'inputmode' => 'numeric',
@@ -234,6 +236,32 @@ class RealizationForm
                                     ->default(0)
                                     ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                                     ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                                    ->rule(function (Get $get) {
+                                        return function (string $attribute, $value, Closure $fail) use ($get) {
+                                            $items = $get('../../expenseItems') ?? [];
+
+                                            $totalExpense = 0.0;
+                                            $totalRealization = 0.0;
+
+                                            foreach ($items as $item) {
+                                                $amount = (float) self::parseMoney($item['amount'] ?? 0);
+                                                $realisasi = (float) self::parseMoney($item['realisasi'] ?? 0);
+
+                                                if ($realisasi < 0) {
+                                                    $realisasi = 0;
+                                                }
+
+                                                $totalExpense += $amount;
+                                                $totalRealization += $realisasi;
+                                            }
+
+                                            $totalBalance = $totalExpense - $totalRealization;
+
+                                            if ($totalBalance < 0) {
+                                                $fail('Total saldo tidak boleh negatif.');
+                                            }
+                                        };
+                                    })
                                     ->extraInputAttributes([
                                         'style' => 'font-weight: bold',
                                         'title' => 'Selisih antara Total Anggaran dikurangi Total Realisasi',

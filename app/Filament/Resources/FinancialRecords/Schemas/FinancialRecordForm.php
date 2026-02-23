@@ -93,18 +93,14 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
-                            ->live(debounce: 500)
+                            ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                // Standardize format to float
-                                $floatValue = self::parseMoney($state);
-                                $set('income_amount', number_format($floatValue, 0, ',', '.'));
                                 self::calculateIncomeFixed($get, $set);
                             })
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                             ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                             ->extraInputAttributes([
                                 'inputmode' => 'numeric',
-                                'oninput' => "let v = this.value.replace(/[^0-9,]/g, ''); let p = v.split(','); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); this.value = p.join(',');",
+                                'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
                             ])
                             ->columnSpanFull(),
                         TextInput::make('income_percentage')
@@ -112,20 +108,14 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
-                            ->live(debounce: 500)
+                            ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                $floatValue = self::parseMoney($state);
-                                if ($floatValue < 0) {
-                                    $floatValue = 0;
-                                }
-                                $set('income_percentage', number_format($floatValue, 0, ',', '.'));
                                 self::calculateIncomeFixed($get, $set);
                             })
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                             ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                             ->extraInputAttributes([
                                 'inputmode' => 'numeric',
-                                'oninput' => "let v = this.value.replace(/[^0-9,]/g, ''); let p = v.split(','); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); this.value = p.join(',');",
+                                'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
                             ])
                             ->columnSpanFull(),
                         TextInput::make('income_fixed')
@@ -148,17 +138,14 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
-                            ->live(debounce: 500)
+                            ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                $floatValue = self::parseMoney($state);
-                                $set('income_bos', number_format($floatValue, 0, ',', '.'));
                                 self::calculateTotalIncome($get, $set);
                             })
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                             ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                             ->extraInputAttributes([
                                 'inputmode' => 'numeric',
-                                'oninput' => "let v = this.value.replace(/[^0-9,]/g, ''); let p = v.split(','); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); this.value = p.join(',');",
+                                'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
                             ])
                             ->columnSpan(1),
                         TextInput::make('income_bos_other')
@@ -167,20 +154,14 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
-                            ->live(debounce: 500)
+                            ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                $floatValue = self::parseMoney($state);
-                                if ($floatValue < 0) {
-                                    $floatValue = 0;
-                                }
-                                $set('income_bos_other', number_format($floatValue, 0, ',', '.'));
                                 self::calculateTotalIncome($get, $set);
                             })
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                             ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                             ->extraInputAttributes([
                                 'inputmode' => 'numeric',
-                                'oninput' => "let v = this.value.replace(/[^0-9,]/g, ''); let p = v.split(','); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); this.value = p.join(',');",
+                                'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
                             ])
                             ->columnSpan(1),
                     ])->columns(2),
@@ -262,17 +243,14 @@ class FinancialRecordForm
                                     ->prefix('Rp')
                                     ->default(0)
                                     ->stripCharacters('.')
-                                    ->live(debounce: 500)
+                                    ->live(onBlur: true)
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                        $floatValue = self::parseMoney($state);
-                                        $set('amount', number_format($floatValue, 0, ',', '.'));
                                         self::calculateTotalExpense($get, $set);
                                     })
-                                    ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                                     ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                                     ->extraInputAttributes([
                                         'inputmode' => 'numeric',
-                                        'oninput' => "let v = this.value.replace(/[^0-9,]/g, ''); let p = v.split(','); p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.'); this.value = p.join(',');",
+                                        'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
                                     ])
                                     ->columnSpan([
                                         'default' => 12,
