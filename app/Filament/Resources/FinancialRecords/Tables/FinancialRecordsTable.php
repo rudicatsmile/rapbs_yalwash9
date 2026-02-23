@@ -225,7 +225,7 @@ class FinancialRecordsTable
                     ->modalSubmitActionLabel('Yes, Duplicate')
                     ->action(function (FinancialRecord $record) {
                         DB::transaction(function () use ($record) {
-                            $replica = $record->replicate();
+                            $replica = $record->replicate(['mandiri_expense', 'bos_expense']);
                             $replica->status = true;
                             $replica->save();
 
@@ -354,7 +354,7 @@ class FinancialRecordsTable
 
                             DB::transaction(function () use ($records) {
                                 foreach ($records as $record) {
-                                    $newRecord = $record->replicate();
+                                    $newRecord = $record->replicate(['mandiri_expense', 'bos_expense']);
                                     $newRecord->status = true;
                                     $newRecord->save();
 

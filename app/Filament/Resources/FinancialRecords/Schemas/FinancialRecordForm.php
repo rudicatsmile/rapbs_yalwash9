@@ -95,6 +95,7 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                 self::calculateIncomeFixed($get, $set);
@@ -110,6 +111,7 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                 self::calculateIncomeFixed($get, $set);
@@ -140,6 +142,7 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                 self::calculateTotalIncome($get, $set);
@@ -156,6 +159,7 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                 self::calculateTotalIncome($get, $set);
@@ -245,6 +249,7 @@ class FinancialRecordForm
                                     ->prefix('Rp')
                                     ->default(0)
                                     ->stripCharacters('.')
+                                    ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                         self::calculateTotalExpense($get, $set);

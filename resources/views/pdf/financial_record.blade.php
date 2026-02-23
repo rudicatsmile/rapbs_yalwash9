@@ -64,6 +64,10 @@
                 <td>BOS</td>
                 <td class="text-right">Rp {{ number_format($record->income_bos, 0, ',', '.') }}</td>
             </tr>
+            <tr>
+                <td>Lainnya</td>
+                <td class="text-right">Rp {{ number_format($record->income_bos_other ?? 0, 0, ',', '.') }}</td>
+            </tr>
             <tr class="bold" style="background-color: #f9fafb;">
                 <td>Total Pemasukan</td>
                 <td class="text-right">Rp {{ number_format($record->income_total, 0, ',', '.') }}</td>
