@@ -20,7 +20,7 @@ class FinancialStatsOverview extends BaseWidget
 
         $baseQuery = FinancialRecord::query();
 
-        if ($user && $user->hasRole('user') && !$user->hasRole(['super_admin', 'admin', 'Admin', 'Super admin', 'editor', 'Editor'])) {
+        if ($user && $user->hasRole('user') && ! $user->hasRole(['super_admin', 'admin', 'Admin', 'Super admin', 'editor', 'Editor'])) {
             if ($user->department_id) {
                 $baseQuery->where('department_id', $user->department_id);
             } else {
