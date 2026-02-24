@@ -80,7 +80,7 @@ class FinancialRecordsTable
 
                         $html .= '</div>'; // End Details
                         $html .= '</div>'; // End Container
-
+            
                         return $html;
                     })
                     ->sortable(['income_total'])
@@ -141,7 +141,7 @@ class FinancialRecordsTable
 
                         $html .= '</div>'; // End Details
                         $html .= '</div>'; // End Container
-
+            
                         return $html;
                     })
                     ->sortable(['total_expense'])
@@ -379,11 +379,11 @@ class FinancialRecordsTable
                     ->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
             ])
             ->headerActions([
-                ExportAction::make()
-                    ->exporter(FinancialRecordExporter::class)
-                    ->label('Export Excel')
-                    ->tooltip('Export to Excel')
-                    ->icon('heroicon-m-arrow-down-tray'),
+                // ExportAction::make()
+                //     ->exporter(FinancialRecordExporter::class)
+                //     ->label('Export Excel')
+                //     ->tooltip('Export to Excel')
+                //     ->icon('heroicon-m-arrow-down-tray'),
                 Action::make('download_import_template')
                     ->label('Download Template Import')
                     ->icon('heroicon-m-document-arrow-down')
