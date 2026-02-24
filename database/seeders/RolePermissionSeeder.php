@@ -105,14 +105,21 @@ class RolePermissionSeeder extends Seeder
         })->get();
         $editor->syncPermissions($editorPermissions);
 
-        // User gets only view permissions
+        // User gets view permissions and limited create permissions
         $userPermissions = Permission::where(function ($query) {
             $query->where('name', 'like', 'ViewAny:%')
                 ->orWhere('name', 'like', 'View:%');
         })
             ->where('name', 'not like', '%Department%') // Exclude Department permissions
             ->get();
+
         $user->syncPermissions($userPermissions);
+
+        // Allow regular users to create FinancialRecord (needed for import functionality)
+        $createFinancialRecordPermission = Permission::where('name', 'Create:FinancialRecord')->first();
+        if ($createFinancialRecordPermission) {
+            $user->givePermissionTo($createFinancialRecordPermission);
+        }
 
         $this->command->info('Roles and permissions seeded successfully!');
     }

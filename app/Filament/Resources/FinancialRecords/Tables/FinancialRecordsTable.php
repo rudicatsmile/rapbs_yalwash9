@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\FinancialRecords\Tables;
 
+use Illuminate\Support\Facades\Storage;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -22,7 +23,7 @@ use App\Filament\Exports\FinancialRecordExporter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Forms\Components\FileUpload;
-use OpenSpout\Reader\Common\Creator\ReaderEntityFactory;
+use OpenSpout\Reader\XLSX\Reader;
 use App\Models\Department;
 use App\Models\ExpenseItem;
 use Carbon\Carbon;
@@ -388,6 +389,7 @@ class FinancialRecordsTable
                     ->icon('heroicon-m-document-arrow-down')
                     ->color('secondary')
                     ->tooltip('Download template Excel untuk import RAPBS')
+                    ->authorize(fn() => true)
                     ->action(function () {
                         return response()->streamDownload(function () {
                             $writer = new Writer();
@@ -471,8 +473,7 @@ class FinancialRecordsTable
 
                             $writer->close();
                         }, 'template_import_rapbs_' . now()->format('Y-m-d') . '.xlsx');
-                    })
-                    ->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
+                    }),
                 Action::make('import_excel')
                     ->label('Import Excel')
                     ->icon('heroicon-m-arrow-up-tray')
@@ -494,6 +495,7 @@ class FinancialRecordsTable
                             ->helperText('Unggah file Excel dengan header kolom yang sesuai. Setiap baris merepresentasikan satu RAPBS Sekolah.')
                             ->required(),
                     ])
+                    ->authorize(fn() => true)
                     ->action(function (array $data) {
                         $path = $data['file'] ?? null;
 
@@ -507,12 +509,18 @@ class FinancialRecordsTable
                             return;
                         }
 
-                        $fullPath = storage_path('app/' . $path);
+                        // Gunakan Storage facade untuk mendapatkan path absolut yang benar dari disk 'local'
+                        // Disk 'local' di Laravel 11+ biasanya mengarah ke storage/app/private secara default
+                        $fullPath = Storage::disk('local')->path($path);
+
+                        Log::info('Attempting to import file from: ' . $fullPath);
 
                         if (!file_exists($fullPath)) {
+                            Log::error('Import failed: File not found at ' . $fullPath);
+
                             Notification::make()
                                 ->title('File tidak ditemukan di server')
-                                ->body('File pada server tidak ditemukan. Silakan unggah ulang.')
+                                ->body('File pada server tidak ditemukan. Path: ' . $fullPath)
                                 ->danger()
                                 ->send();
 
@@ -529,12 +537,14 @@ class FinancialRecordsTable
                         DB::beginTransaction();
 
                         try {
-                            $reader = ReaderEntityFactory::createReaderFromFile($fullPath);
+                            // Gunakan Reader XLSX langsung (karena kita membatasi upload ke .xlsx/.xls)
+                            $reader = new Reader();
                             $reader->open($fullPath);
 
                             $recordsByKey = [];
+                            $sheetIndex = 0;
 
-                            foreach ($reader->getSheetIterator() as $sheetIndex => $sheet) {
+                            foreach ($reader->getSheetIterator() as $sheet) {
                                 $header = [];
 
                                 foreach ($sheet->getRowIterator() as $rowIndex => $row) {
@@ -745,6 +755,7 @@ class FinancialRecordsTable
                                         $successExpenseRows++;
                                     }
                                 }
+                                $sheetIndex++;
                             }
 
                             $reader->close();
@@ -807,7 +818,7 @@ class FinancialRecordsTable
                                 ->send();
                         }
                     })
-                    ->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
+                //->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
             ]);
     }
 }
