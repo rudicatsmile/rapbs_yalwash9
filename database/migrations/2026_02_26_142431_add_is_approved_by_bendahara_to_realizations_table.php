@@ -4,17 +4,16 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        if (!Schema::hasColumn('financial_records', 'income_bos_other')) {
-            Schema::table('financial_records', function (Blueprint $table) {
-                $table->decimal('income_bos_other', 15, 2)->default(0)->after('income_bos');
-            });
-        }
+        Schema::table('financial_records', function (Blueprint $table) {
+            $table->boolean('is_approved_by_bendahara')->default(false)->after('status_realisasi');
+        });
     }
 
     /**
@@ -23,7 +22,7 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('financial_records', function (Blueprint $table) {
-            $table->dropColumn('income_bos_other');
+            $table->dropColumn('is_approved_by_bendahara');
         });
     }
 };

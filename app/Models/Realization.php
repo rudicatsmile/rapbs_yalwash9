@@ -30,6 +30,7 @@ class Realization extends Model implements HasMedia
         'total_balance',
         'status',
         'status_realisasi',
+        'is_approved_by_bendahara',
     ];
 
     protected $casts = [
@@ -44,6 +45,7 @@ class Realization extends Model implements HasMedia
         'total_balance' => 'decimal:2',
         'status' => 'boolean',
         'status_realisasi' => 'boolean',
+        'is_approved_by_bendahara' => 'boolean',
     ];
 
     public function user(): BelongsTo

@@ -7,6 +7,8 @@ use App\Listeners\LogAuthenticationLogin;
 use App\Listeners\LogAuthenticationLogout;
 use App\Listeners\LogImpersonationEnded;
 use App\Listeners\LogImpersonationStarted;
+use App\Events\RealizationApproved;
+use App\Listeners\SendRealizationApprovedNotification;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -36,6 +38,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         Failed::class => [
             LogAuthenticationFailed::class,
+        ],
+        RealizationApproved::class => [
+            SendRealizationApprovedNotification::class,
         ],
     ];
 

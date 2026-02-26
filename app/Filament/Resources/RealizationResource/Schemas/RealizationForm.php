@@ -9,6 +9,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -267,6 +268,47 @@ class RealizationForm
                                         'title' => 'Selisih antara Total Anggaran dikurangi Total Realisasi',
                                     ]),
                             ]),
+                    ]),
+
+                Section::make('Persetujuan Bendahara')
+                    ->columnSpanFull()
+                    ->visible(fn($record) => $record && $record->exists)
+                    ->schema([
+                        Toggle::make('is_approved_by_bendahara')
+                            ->label('Disetujui oleh Bendahara')
+                            ->onColor('success')
+                            ->offColor('danger')
+                            ->onIcon('heroicon-m-check-badge')
+                            ->offIcon('heroicon-m-x-circle')
+                            ->inline(false)
+                            ->live()
+                            ->afterStateUpdated(function ($state, $record) {
+                                if (!$record)
+                                    return;
+
+                                $record->update(['is_approved_by_bendahara' => $state]);
+
+                                // Dispatch Event (Approved or Unapproved)
+                                \App\Events\RealizationApproved::dispatch($record, auth()->user(), $state);
+
+                                // Audit Log
+                                if (function_exists('activity')) {
+                                    activity()
+                                        ->performedOn($record)
+                                        ->causedBy(auth()->user())
+                                        ->withProperties(['is_approved_by_bendahara' => $state])
+                                        ->log($state ? 'approved_realization' : 'unapproved_realization');
+                                }
+
+                                Notification::make()
+                                    ->title($state ? 'Realisasi Disetujui' : 'Persetujuan Dibatalkan')
+                                    ->body($state ? 'Status telah diperbarui menjadi disetujui.' : 'Status telah diperbarui menjadi belum disetujui.')
+                                    ->success()
+                                    ->send();
+                            })
+                            ->disabled(fn() => !auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor', 'bendahara']))
+                            ->dehydrated()
+                            ->helperText('Aktifkan untuk menyetujui realisasi ini. Hanya Bendahara, Admin, dan Editor yang dapat mengubah status ini.'),
                     ]),
 
                 Section::make('Lampiran Realisasi')
