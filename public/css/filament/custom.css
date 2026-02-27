@@ -1,0 +1,13 @@
+.filament-tables-column-record-name {
+    min-width: 450px !important;
+    width: 40% !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+}
+
+@media (max-width: 768px) {
+    .filament-tables-column-record-name {
+        min-width: 250px !important;
+        width: auto !important;
+    }
+}

@@ -1,0 +1,31 @@
+function sendNotificationWhatsapp($phone, $msg)
+{
+    $link = "https://jkt.wablas.com/api/send-message";
+    $link = "https://mydomain.com/apis/send-yoir-message";
+    $data = [
+        'phone' => $phone,
+        'message' => $msg,
+        'caption' => "caption here",
+        'image' => "https://imgur.com/a/HmQFnWX",
+    ];
+
+    $curl = curl_init();
+    $token = "WVt3FebWwGOIO3peZHApBlNOGyjuBgb9HJ3ntPDxI136ZWIbM6pTVlRQsDOOXBHs.EN5eKMMv";
+
+    curl_setopt(
+        $curl,
+        CURLOPT_HTTPHEADER,
+        array(
+            "Authorization: $token",
+        )
+    );
+    curl_setopt($curl, CURLOPT_URL, $link);
+    curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "POST");
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query($data));
+    curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
+    $result = curl_exec($curl);
+    curl_close($curl);
+    return $result;
+}

@@ -41,7 +41,13 @@ class RealizationTable
                     ->label('Nama History')
                     ->searchable()
                     ->wrap()
-                    ->extraAttributes(fn($record) => ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user')) ? ['title' => 'Access Denied'] : []),
+                    ->extraAttributes(function ($record) {
+                        $attributes = ['class' => 'filament-tables-column-record-name'];
+                        if ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user')) {
+                            $attributes['title'] = 'Access Denied';
+                        }
+                        return $attributes;
+                    }),
                 TextColumn::make('department.name')
                     ->label('Departemen / Tanggal')
                     ->searchable()

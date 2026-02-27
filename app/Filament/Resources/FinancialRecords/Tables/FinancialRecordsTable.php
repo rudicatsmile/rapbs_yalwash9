@@ -39,7 +39,8 @@ class FinancialRecordsTable
                 TextColumn::make('record_name')
                     ->label('Nama History')
                     ->searchable()
-                    ->wrap(),
+                    ->wrap()
+                    ->extraAttributes(['class' => 'filament-tables-column-record-name']),
                 TextColumn::make('department.name')
                     ->label('Departemen / Tanggal')
                     ->searchable()
@@ -78,7 +79,7 @@ class FinancialRecordsTable
 
                         $html .= '</div>'; // End Details
                         $html .= '</div>'; // End Container
-            
+
                         return $html;
                     })
                     ->sortable(['income_total'])
@@ -139,7 +140,7 @@ class FinancialRecordsTable
 
                         $html .= '</div>'; // End Details
                         $html .= '</div>'; // End Container
-            
+
                         return $html;
                     })
                     ->sortable(['total_expense'])

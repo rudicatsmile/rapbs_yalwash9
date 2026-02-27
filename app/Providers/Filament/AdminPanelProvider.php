@@ -98,6 +98,10 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->globalSearch(false)
             ->databaseNotifications()
-            ->databaseNotificationsPolling('15s');
+            ->databaseNotificationsPolling('15s')
+            ->renderHook(
+                'panels::head.end',
+                fn (): string => '<link rel="stylesheet" href="' . asset('css/filament/custom.css') . '" />'
+            );
     }
 }
