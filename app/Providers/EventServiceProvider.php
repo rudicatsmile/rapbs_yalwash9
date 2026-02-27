@@ -9,6 +9,7 @@ use App\Listeners\LogImpersonationEnded;
 use App\Listeners\LogImpersonationStarted;
 use App\Events\RealizationApproved;
 use App\Listeners\SendRealizationApprovedNotification;
+use App\Listeners\SendWhatsAppRealizationApprovedNotification;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -41,6 +42,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         RealizationApproved::class => [
             SendRealizationApprovedNotification::class,
+            SendWhatsAppRealizationApprovedNotification::class,
         ],
     ];
 

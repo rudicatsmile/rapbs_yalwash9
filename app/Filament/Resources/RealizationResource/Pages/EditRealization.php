@@ -4,11 +4,13 @@ namespace App\Filament\Resources\RealizationResource\Pages;
 
 use App\Filament\Resources\RealizationResource;
 use App\Models\User;
+use App\Services\WhatsAppService;
 use Filament\Actions;
 use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class EditRealization extends EditRecord
 {
@@ -60,9 +62,28 @@ class EditRealization extends EditRecord
         ];
     }
 
+    protected $shouldDispatchApprovalEvent = false;
+    protected $approvalState = false;
+
     protected function beforeSave(): void
     {
         $state = $this->form->getState();
+
+        // Check for approval status change
+        $newValue = (bool) ($state['is_approved_by_bendahara'] ?? false);
+        $oldValue = (bool) $this->record->is_approved_by_bendahara;
+
+        Log::info('EditRealization: beforeSave check', [
+            'record_id' => $this->record->id,
+            'old_value' => $oldValue,
+            'new_value' => $newValue,
+            'is_dirty' => $newValue !== $oldValue
+        ]);
+
+        if ($newValue !== $oldValue) {
+            $this->shouldDispatchApprovalEvent = true;
+            $this->approvalState = $newValue;
+        }
 
         $items = $state['expenseItems'] ?? [];
 
@@ -88,19 +109,40 @@ class EditRealization extends EditRecord
         $this->data['total_balance'] = $totalBalance;
     }
 
-    public function save(bool $shouldRedirect = true, bool $shouldSendSavedNotification = true): void
+    protected function afterSave(): void
     {
-        $state = $this->form->getState();
+        Log::info('EditRealization: afterSave called', [
+            'should_dispatch' => $this->shouldDispatchApprovalEvent,
+            'approval_state' => $this->approvalState
+        ]);
 
-        $totalBalance = (float) ($state['total_balance'] ?? 0);
+        if ($this->shouldDispatchApprovalEvent) {
+            $record = $this->record;
+            $state = $this->approvalState;
+            $user = auth()->user();
 
-        if ($totalBalance < 0) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'total_balance' => 'Total saldo tidak boleh negatif.',
-            ]);
+            // Dispatch Event (Approved or Unapproved)
+            \App\Events\RealizationApproved::dispatch($record, $user, $state);
+
+            // Audit Log
+            if (function_exists('activity')) {
+                activity()
+                    ->performedOn($record)
+                    ->causedBy($user)
+                    ->withProperties(['is_approved_by_bendahara' => $state])
+                    ->log($state ? 'approved_realization' : 'unapproved_realization');
+            }
+
+            // Notification
+            Notification::make()
+                ->title($state ? 'Realisasi Disetujui' : 'Persetujuan Dibatalkan')
+                ->body($state ? 'Status telah diperbarui menjadi disetujui.' : 'Status telah diperbarui menjadi belum disetujui.')
+                ->success()
+                ->send();
+
+            // Reset flags
+            $this->shouldDispatchApprovalEvent = false;
         }
-
-        parent::save($shouldRedirect, $shouldSendSavedNotification);
     }
 
     public function updatedDataStatusRealisasi($value): void

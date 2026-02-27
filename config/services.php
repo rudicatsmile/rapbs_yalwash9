@@ -76,4 +76,9 @@ return [
         'redirect' => env('LINKEDIN_REDIRECT_URI', env('APP_URL').'/auth/linkedin/callback'),
     ],
 
+    'whatsapp' => [
+        'base_url' => env('WHATSAPP_BASE_URL', 'https://jkt.wablas.com/api/send-message'),
+        'token' => env('WHATSAPP_TOKEN', 'WVt3FebWwGOIO3peZHApBlNOGyjuBgb9HJ3ntPDxI136ZWIbM6pTVlRQsDOOXBHs.EN5eKMMv'),
+    ],
+
 ];

@@ -28,6 +28,7 @@ class FinancialRecord extends Model
         'total_balance',
         'status',
         'status_realisasi',
+        'is_approved_by_bendahara',
     ];
 
     protected $casts = [

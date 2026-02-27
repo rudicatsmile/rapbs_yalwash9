@@ -87,6 +87,7 @@ class RolePermissionSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $editor = Role::firstOrCreate(['name' => 'editor', 'guard_name' => 'web']);
         $user = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
+        $staff = Role::firstOrCreate(['name' => 'staff', 'guard_name' => 'web']);
 
         // Super Admin gets all permissions (handled by Shield via gate)
         // No need to explicitly assign permissions to super_admin
@@ -114,11 +115,13 @@ class RolePermissionSeeder extends Seeder
             ->get();
 
         $user->syncPermissions($userPermissions);
+        $staff->syncPermissions($userPermissions);
 
         // Allow regular users to create FinancialRecord (needed for import functionality)
         $createFinancialRecordPermission = Permission::where('name', 'Create:FinancialRecord')->first();
         if ($createFinancialRecordPermission) {
             $user->givePermissionTo($createFinancialRecordPermission);
+            $staff->givePermissionTo($createFinancialRecordPermission);
         }
 
         $this->command->info('Roles and permissions seeded successfully!');
