@@ -36,18 +36,16 @@ class FinancialRecordsTable
     {
         return $table
             ->columns([
-                TextColumn::make('department.name')
-                    ->label('Departemen')
-                    ->searchable()
-                    ->sortable()
-                    ->badge(),
-                TextColumn::make('record_date')
-                    ->label('Tanggal')
-                    ->date()
-                    ->sortable(),
                 TextColumn::make('record_name')
                     ->label('Nama History')
-                    ->searchable(),
+                    ->searchable()
+                    ->wrap(),
+                TextColumn::make('department.name')
+                    ->label('Departemen / Tanggal')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->description(fn($record) => $record->record_date ? $record->record_date->format('d M Y') : '-'),
                 TextColumn::make('income_details')
                     ->label('Rincian Pemasukan')
                     ->html()

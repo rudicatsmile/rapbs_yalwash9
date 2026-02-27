@@ -8,6 +8,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ReplicateAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Filters\SelectFilter;
@@ -36,20 +37,17 @@ class RealizationTable
                 ? 'pointer-events-none opacity-60 hover:bg-transparent'
                 : null)
             ->columns([
-                TextColumn::make('department.name')
-                    ->label('Departemen')
-                    ->searchable()
-                    ->sortable()
-                    ->badge()
-                    ->extraAttributes(fn($record) => ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user')) ? ['title' => 'Access Denied'] : []),
-                TextColumn::make('record_date')
-                    ->label('Tanggal')
-                    ->date()
-                    ->sortable()
-                    ->extraAttributes(fn($record) => ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user')) ? ['title' => 'Access Denied'] : []),
                 TextColumn::make('record_name')
                     ->label('Nama History')
                     ->searchable()
+                    ->wrap()
+                    ->extraAttributes(fn($record) => ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user')) ? ['title' => 'Access Denied'] : []),
+                TextColumn::make('department.name')
+                    ->label('Departemen / Tanggal')
+                    ->searchable()
+                    ->sortable()
+                    ->badge()
+                    ->description(fn($record) => $record->record_date ? $record->record_date->format('d M Y') : '-')
                     ->extraAttributes(fn($record) => ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user')) ? ['title' => 'Access Denied'] : []),
                 TextColumn::make('media_count')
                     ->label('Lampiran')
@@ -184,6 +182,14 @@ class RealizationTable
                             return null;
                         }
                     }),
+                Action::make('status')
+                    ->label('Status')
+                    ->icon(fn($record) => $record->is_approved_by_bendahara ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
+                    ->color(fn($record) => $record->is_approved_by_bendahara ? 'success' : 'danger')
+                    ->tooltip(fn($record) => $record->is_approved_by_bendahara ? 'Disetujui oleh Bendahara' : 'Belum Disetujui')
+                    ->iconButton()
+                    ->disabled()
+                    ->action(fn() => null),
             ])
             ->bulkActions([
                 // No bulk actions for Realization typically, or keep delete?
