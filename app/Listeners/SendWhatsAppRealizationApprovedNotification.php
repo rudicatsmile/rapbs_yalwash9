@@ -70,7 +70,7 @@ class SendWhatsAppRealizationApprovedNotification // implements ShouldQueue
             $monthLabel = $monthNames[$record->month] ?? '-';
 
             $message = "*Ef-Fin9 Sistem*\n\n" .
-                "Pengajuan Realisasi Anda telah disetujui oleh Bendahara.\n\n" .
+                "Pengajuan Realisasi Anda telah disetujui oleh Bendahara Yayasan.\n\n" .
                 "Detail:\n" .
                 "Judul: {$record->record_name}\n" .
                 "Bulan: {$monthLabel}\n" .
