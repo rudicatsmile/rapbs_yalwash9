@@ -16,6 +16,11 @@ class DepartmentsTable
             ->columns([
                 TextColumn::make('name')
                     ->searchable(),
+                TextColumn::make('phone')
+                    ->label('Nomor Telepon')
+                    ->searchable()
+                    ->copyable()
+                    ->icon('heroicon-m-phone'),
                 TextColumn::make('urut')
                     ->numeric()
                     ->sortable(),

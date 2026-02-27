@@ -14,6 +14,7 @@ class Department extends Model
         'name',
         'urut',
         'description',
+        'phone',
     ];
 
     public function financialRecords(): HasMany
