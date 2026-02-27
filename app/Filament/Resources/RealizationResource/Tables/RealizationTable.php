@@ -190,9 +190,9 @@ class RealizationTable
                     }),
                 Action::make('status')
                     ->label('Status')
-                    ->icon(fn($record) => $record->is_approved_by_bendahara ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
-                    ->color(fn($record) => $record->is_approved_by_bendahara ? 'success' : 'danger')
-                    ->tooltip(fn($record) => $record->is_approved_by_bendahara ? 'Disetujui oleh Bendahara' : 'Belum Disetujui')
+                    ->icon(fn($record) => $record->is_approved_by_bendahara ? 'heroicon-o-clipboard-document-check' : ($record->status_realisasi ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle'))
+                    ->color(fn($record) => $record->is_approved_by_bendahara ? 'success' : ($record->status_realisasi ? 'info' : 'danger'))
+                    ->tooltip(fn($record) => $record->is_approved_by_bendahara ? 'Disetujui oleh Bendahara' : ($record->status_realisasi ? 'Siap Dilaporkan' : 'Belum Disetujui Bendahara'))
                     ->iconButton()
                     ->disabled()
                     ->action(fn() => null),
