@@ -149,13 +149,21 @@
         <table style="width: 100%; border: none; text-align: center; font-size: 12px;">
             <tr>
                 <td style="border: none; width: 33%;"></td>
+                <td style="border: none; width: 33%;"></td>
+                <td style="border: none; width: 33%;">
+                    Jakarta, {{ now()->locale('id')->isoFormat('D MMMM Y') }}
+                </td>
+            </tr>
+            <tr>
                 <td style="border: none; width: 33%;">Mengetahui,</td>
                 <td style="border: none; width: 33%;">Menyetujui,</td>
+                <td style="border: none; width: 33%;">
+                </td>
             </tr>
             <tr>
                 <td style="border: none;">Kepala Sekolah</td>
-                <td style="border: none;">Bendahara Sekolah</td>
                 <td style="border: none;">Bendahara Yayasan</td>
+                <td style="border: none;">Bendahara Sekolah</td>
             </tr>
             <tr>
                 <td style="border: none; height: 60px;"></td>
@@ -164,8 +172,8 @@
             </tr>
             <tr>
                 <td style="border: none;"><strong>{{ $kepalaSekolahName }}</strong></td>
-                <td style="border: none;"><strong>{{ $bendaharaSekolahName }}</strong></td>
                 <td style="border: none;"><strong>{{ $bendaharaYayasanName }}</strong></td>
+                <td style="border: none;"><strong>{{ $bendaharaSekolahName }}</strong></td>
             </tr>
         </table>
     </div>
