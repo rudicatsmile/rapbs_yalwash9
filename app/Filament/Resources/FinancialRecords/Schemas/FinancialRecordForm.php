@@ -7,6 +7,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -432,6 +433,32 @@ class FinancialRecordForm
                             }),
                     ])
                     ->columnSpanFull(),
+
+                Section::make('Lampiran Financial Record')
+                    ->columnSpanFull()
+                    ->schema([
+                        SpatieMediaLibraryFileUpload::make('financial_record_attachments')
+                            ->label('Upload Lampiran')
+                            ->collection('financial-record-attachments')
+                            ->multiple()
+                            ->enableDownload()
+                            ->enableOpen()
+                            ->reorderable()
+                            ->maxSize(10240)
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'image/jpeg',
+                                'image/png',
+                                'application/zip',
+                            ])
+                            ->helperText('Format: PDF/DOC/DOCX/XLS/XLSX/JPG/PNG. Maks 10MB per file.')
+                            ->preserveFilenames()
+                            ->disk('public'),
+                    ]),
             ]);
     }
 

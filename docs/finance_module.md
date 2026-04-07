@@ -133,3 +133,27 @@ Saat membuat data baru pada menu **RAPB Sekolah** (`/financial-records/create`),
 - Jika nomor departemen tidak valid / departemen tidak ditemukan, notifikasi WhatsApp tidak akan dikirim dan user akan mendapat notifikasi error di halaman
 - Jika pengiriman WhatsApp gagal (mis. koneksi/token), sistem menampilkan notifikasi gagal dan mencatat log percobaan pengiriman
 - Untuk mencegah spam, pengiriman WhatsApp hanya dilakukan sekali per sesi toggle tidak aktif, dan akan dapat dikirim ulang setelah status dikembalikan aktif lalu dinonaktifkan lagi
+
+### 9. Lampiran Financial Record (Upload / View / Delete)
+
+Pada form **RAPB Sekolah** (`/financial-records/create` dan `/financial-records/{id}/edit`), tersedia section **Lampiran Financial Record** untuk mengunggah dokumen pendukung.
+
+**Fitur utama:**
+
+- Upload multiple file (drag & drop)
+- Validasi tipe file: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG
+- Batas ukuran: maksimal 10MB per file
+- Preview/daftar file di komponen upload (dengan open/download)
+- Hapus file dari komponen upload
+
+**Catatan teknis:**
+
+- Penyimpanan file menggunakan Media Library (`media` table) untuk menyimpan metadata (nama, size, mime type, tanggal upload) dan file disimpan pada disk `public`.
+- Untuk melihat isi lampiran tanpa download, gunakan tombol **View** yang membuka halaman preview di aplikasi.
+
+**Endpoint preview lampiran:**
+
+- `GET /financial-records/{record}/attachments/{media}/preview` (halaman preview)
+- `GET /financial-records/{record}/attachments/{media}/file` (stream file inline)
+
+Endpoint ini melakukan validasi akses (role/permission dan batasan departemen untuk role `user`) sebelum menampilkan file.
