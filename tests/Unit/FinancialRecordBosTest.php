@@ -39,7 +39,8 @@ class FinancialRecordBosTest extends TestCase
         $data = [
             'income_fixed' => '1.000.000', // String formatted
             'income_bos' => '500.000',     // String formatted
-            'total_income_display' => 0,
+            'income_bos_other' => '0',
+            'income_total' => 0,
         ];
 
         [$get, $set, $wrapper] = $this->createMockGetSet($data);
@@ -48,7 +49,7 @@ class FinancialRecordBosTest extends TestCase
         $this->callStaticMethod('calculateTotalIncome', [$get, $set]);
 
         // Assert
-        $this->assertEquals('1.500.000', $wrapper->data['total_income_display']);
+        $this->assertEquals('1.500.000', $wrapper->data['income_total']);
     }
 
     public function test_calculate_total_income_handles_empty_or_zero()
@@ -56,14 +57,15 @@ class FinancialRecordBosTest extends TestCase
         $data = [
             'income_fixed' => '0',
             'income_bos' => '',
-            'total_income_display' => 0,
+            'income_bos_other' => '',
+            'income_total' => 0,
         ];
 
         [$get, $set, $wrapper] = $this->createMockGetSet($data);
 
         $this->callStaticMethod('calculateTotalIncome', [$get, $set]);
 
-        $this->assertEquals('0', $wrapper->data['total_income_display']);
+        $this->assertEquals('0', $wrapper->data['income_total']);
     }
 
     public function test_income_bos_formatting_and_storage()

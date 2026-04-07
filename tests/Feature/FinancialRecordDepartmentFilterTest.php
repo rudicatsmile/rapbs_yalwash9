@@ -54,22 +54,16 @@ class FinancialRecordDepartmentFilterTest extends TestCase
         $admin->assignRole('admin');
         $admin->givePermissionTo('ViewAny:FinancialRecord');
 
-        $record1 = FinancialRecord::create([
+        $record1 = FinancialRecord::factory()->create([
             'user_id' => $admin->id,
             'department_id' => $dept1->id,
-            'record_date' => now(),
             'record_name' => 'Record A',
-            'income_amount' => 1000,
-            'status' => true,
         ]);
 
-        $record2 = FinancialRecord::create([
+        $record2 = FinancialRecord::factory()->create([
             'user_id' => $admin->id,
             'department_id' => $dept2->id,
-            'record_date' => now(),
             'record_name' => 'Record B',
-            'income_amount' => 2000,
-            'status' => true,
         ]);
 
         Livewire::actingAs($admin)

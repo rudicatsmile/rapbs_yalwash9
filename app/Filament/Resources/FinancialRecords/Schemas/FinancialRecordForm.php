@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\FinancialRecords\Schemas;
 
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -11,9 +12,14 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use App\Models\Department;
+use App\Services\WhatsAppService;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
 
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 
 class FinancialRecordForm
@@ -25,6 +31,9 @@ class FinancialRecordForm
             ->components([
                 Section::make('Header')
                     ->schema([
+                        Hidden::make('wa_inactive_status_notified')
+                            ->default(false)
+                            ->dehydrated(false),
                         Toggle::make('status')
                             ->label('Status Aktif')
                             ->onIcon('heroicon-m-check')
@@ -34,6 +43,144 @@ class FinancialRecordForm
                             ->default(true)
                             ->visible(fn() => auth()->user() && !auth()->user()->hasRole('user'))
                             ->disabled(fn() => auth()->user() && auth()->user()->hasRole('user'))
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set, $state, ?\Illuminate\Database\Eloquent\Model $record = null): void {
+                                if ($record && $record->exists) {
+                                    return;
+                                }
+
+                                $isActive = (bool) $state;
+
+                                if ($isActive) {
+                                    $set('wa_inactive_status_notified', false);
+                                    return;
+                                }
+
+                                if ((bool) $get('wa_inactive_status_notified')) {
+                                    return;
+                                }
+
+                                $departmentId = $get('department_id');
+
+                                if (!$departmentId) {
+                                    Log::warning('WhatsApp notification skipped: department not selected (status inactive)', [
+                                        'user_id' => auth()->id(),
+                                    ]);
+
+                                    Notification::make()
+                                        ->title('Departemen belum dipilih')
+                                        ->body('Pilih departemen terlebih dahulu sebelum menonaktifkan status.')
+                                        ->danger()
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $department = Department::query()->find($departmentId);
+
+                                if (!$department) {
+                                    Log::warning('WhatsApp notification skipped: department not found (status inactive)', [
+                                        'user_id' => auth()->id(),
+                                        'department_id' => $departmentId,
+                                    ]);
+
+                                    Notification::make()
+                                        ->title('Departemen tidak ditemukan')
+                                        ->body('Departemen yang dipilih tidak valid.')
+                                        ->danger()
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $phone = (string) ($department->phone ?? '');
+                                $waService = new WhatsAppService();
+
+                                if (!$waService->isValidPhone($phone)) {
+                                    Log::warning('WhatsApp notification skipped: invalid department phone (status inactive)', [
+                                        'user_id' => auth()->id(),
+                                        'department_id' => $department->id,
+                                        'phone' => $phone,
+                                    ]);
+
+                                    Notification::make()
+                                        ->title('Nomor WhatsApp departemen tidak valid')
+                                        ->body('Periksa nomor telepon pada data departemen.')
+                                        ->danger()
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $recordDateState = $get('record_date');
+                                $recordDateFormatted = '-';
+
+                                if ($recordDateState) {
+                                    try {
+                                        $recordDateFormatted = Carbon::parse($recordDateState)->format('d-m-Y');
+                                    } catch (\Throwable $e) {
+                                        $recordDateFormatted = (string) $recordDateState;
+                                    }
+                                }
+
+                                $monthNames = [
+                                    1 => 'Januari',
+                                    2 => 'Februari',
+                                    3 => 'Maret',
+                                    4 => 'April',
+                                    5 => 'Mei',
+                                    6 => 'Juni',
+                                    7 => 'Juli',
+                                    8 => 'Agustus',
+                                    9 => 'September',
+                                    10 => 'Oktober',
+                                    11 => 'November',
+                                    12 => 'Desember',
+                                ];
+
+                                $monthNumber = (int) ($get('month') ?? 0);
+                                $monthLabel = $monthNames[$monthNumber] ?? '-';
+
+                                $recordName = (string) ($get('record_name') ?: '-');
+                                $incomeTotal = (float) self::parseMoney((string) ($get('income_total') ?? '0'));
+                                $timestamp = now()->format('d-m-Y H:i');
+                                $actorName = auth()->user()?->name ?? '-';
+
+                                $message = "*Ef-Fin9 Sistem*\n\n"
+                                    . "Perubahan status Financial Record menjadi *TIDAK AKTIF*.\n\n"
+                                    . "Departemen: {$department->name}\n"
+                                    . "Nama History: {$recordName}\n"
+                                    . "Tanggal: {$recordDateFormatted}\n"
+                                    . "Bulan: {$monthLabel}\n"
+                                    . "Total Pemasukan: Rp " . number_format($incomeTotal, 0, ',', '.') . "\n"
+                                    . "Diubah oleh: {$actorName}\n"
+                                    . "Waktu: {$timestamp}";
+
+                                Log::info('Attempting WhatsApp notification (status inactive)', [
+                                    'user_id' => auth()->id(),
+                                    'department_id' => $department->id,
+                                    'phone' => $waService->normalizePhone($phone),
+                                    'record_name' => $recordName,
+                                ]);
+
+                                $success = $waService->sendMessage($phone, $message);
+
+                                if ($success) {
+                                    $set('wa_inactive_status_notified', true);
+
+                                    Notification::make()
+                                        ->title('Notifikasi WhatsApp terkirim')
+                                        ->body("Departemen {$department->name} telah menerima pemberitahuan status tidak aktif.")
+                                        ->success()
+                                        ->send();
+                                } else {
+                                    Notification::make()
+                                        ->title('Gagal mengirim WhatsApp')
+                                        ->body('Notifikasi alternatif ditampilkan. Silakan coba lagi atau periksa koneksi / token WhatsApp.')
+                                        ->danger()
+                                        ->send();
+                                }
+                            })
                             ->columnSpanFull(),
                         Select::make('department_id')
                             ->relationship('department', 'name', modifyQueryUsing: function (Builder $query) {

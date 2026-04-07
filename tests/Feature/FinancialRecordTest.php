@@ -51,6 +51,8 @@ test('financial record has expense items', function () {
         'amount' => 25000,
     ]);
 
+    $record->refresh();
+
     expect($record->expenseItems)->toHaveCount(1);
     expect($record->expenseItems->first()->amount)->toEqual(25000);
 });

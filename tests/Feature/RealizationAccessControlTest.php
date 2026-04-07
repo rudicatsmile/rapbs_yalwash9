@@ -20,14 +20,12 @@ class RealizationAccessControlTest extends TestCase
     {
         parent::setUp();
 
-        // Setup Roles
-        Role::create(['name' => 'super_admin']);
-        Role::create(['name' => 'admin']);
-        Role::create(['name' => 'user']);
+        Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
 
-        // Setup Permissions
-        Permission::create(['name' => 'ViewAny:FinancialRecord']);
-        Permission::create(['name' => 'Update:FinancialRecord']);
+        Permission::firstOrCreate(['name' => 'ViewAny:FinancialRecord', 'guard_name' => 'web']);
+        Permission::firstOrCreate(['name' => 'Update:FinancialRecord', 'guard_name' => 'web']);
     }
 
     public function test_user_cannot_edit_locked_realization()

@@ -73,7 +73,11 @@ class NotificationEndToEndTest extends TestCase
         Livewire::actingAs($bendaharaUser)
             ->test(EditRealization::class, ['record' => $realization->id])
             ->assertOk()
-            ->set('data.is_approved_by_bendahara', true);
+            ->fillForm([
+                'is_approved_by_bendahara' => true,
+            ])
+            ->call('save')
+            ->assertHasNoErrors();
 
         // 5. Assert Notification Sent
         // Since the listener is queued, we might need to process the queue or just check if it was pushed.

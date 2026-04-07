@@ -11,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class EditRealization extends EditRecord
 {
@@ -107,6 +108,12 @@ class EditRealization extends EditRecord
         $this->data['total_expense'] = $totalExpense;
         $this->data['total_realization'] = $totalRealization;
         $this->data['total_balance'] = $totalBalance;
+
+        if ($totalBalance < 0) {
+            throw ValidationException::withMessages([
+                'data.total_balance' => 'Saldo akhir tidak boleh negatif.',
+            ]);
+        }
     }
 
     protected function afterSave(): void

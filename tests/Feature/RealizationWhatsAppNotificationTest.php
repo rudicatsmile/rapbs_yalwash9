@@ -65,7 +65,7 @@ class RealizationWhatsAppNotificationTest extends TestCase
 
         Http::assertSent(function ($request) {
             return $request->url() == 'https://jkt.wablas.com/api/send-message' &&
-                $request['phone'] == '081367155656' &&
+                $request['phone'] == '6281367155656' &&
                 str_contains($request['message'], 'telah disetujui oleh Bendahara');
         });
     }

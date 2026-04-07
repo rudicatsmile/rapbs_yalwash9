@@ -5,10 +5,11 @@ namespace App\Filament\Resources\FinancialRecords\Tables;
 use Illuminate\Support\Facades\Storage;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ReplicateAction;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Filters\SelectFilter;
@@ -29,6 +30,7 @@ use App\Models\ExpenseItem;
 use Carbon\Carbon;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
+use Illuminate\Support\HtmlString;
 
 class FinancialRecordsTable
 {
@@ -214,6 +216,93 @@ class FinancialRecordsTable
                     ->iconButton()
                     ->tooltip('View History'),
 
+                Action::make('attachments')
+                    ->label('Lampiran')
+                    ->icon('heroicon-m-paper-clip')
+                    ->color('gray')
+                    ->tooltip('Kelola Lampiran')
+                    ->iconButton()
+                    ->modalHeading('Lampiran Financial Record')
+                    ->modalSubmitActionLabel('Simpan')
+                    ->form(function (?FinancialRecord $record): array {
+                        if (!$record) {
+                            return [];
+                        }
+
+                        $formatSize = function (int $bytes): string {
+                            if ($bytes < 1024) {
+                                return $bytes . ' B';
+                            }
+
+                            $kb = $bytes / 1024;
+                            if ($kb < 1024) {
+                                return number_format($kb, 1, '.', '') . ' KB';
+                            }
+
+                            $mb = $kb / 1024;
+                            return number_format($mb, 1, '.', '') . ' MB';
+                        };
+
+                        $mediaItems = $record->getMedia('financial-record-attachments');
+
+                        $listHtml = '<div style="display:flex;flex-direction:column;gap:6px;">';
+                        if ($mediaItems->isEmpty()) {
+                            $listHtml .= '<div style="font-size:12px;color:#6b7280;">Belum ada file terunggah.</div>';
+                        } else {
+                            foreach ($mediaItems as $media) {
+                                $name = e((string) $media->name);
+                                $size = $formatSize((int) ($media->size ?? 0));
+                                $date = $media->created_at?->format('d-m-Y H:i') ?? '-';
+                                $previewUrl = route('financial-records.attachments.preview', [
+                                    'record' => $record->id,
+                                    'media' => $media->id,
+                                ]);
+
+                                $listHtml .= '<div style="display:flex;justify-content:space-between;gap:10px;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;">';
+                                $listHtml .= '<div style="min-width:0;flex:1;">';
+                                $listHtml .= '<div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' . $name . '</div>';
+                                $listHtml .= '<div style="font-size:11px;color:#6b7280;">' . e($size) . ' • ' . e($date) . '</div>';
+                                $listHtml .= '</div>';
+                                $listHtml .= '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">';
+                                $listHtml .= '<a href="' . e($previewUrl) . '" target="_blank" rel="noopener" style="font-size:12px;text-decoration:none;border:1px solid #e5e7eb;border-radius:8px;padding:6px 10px;color:inherit;">View</a>';
+                                $listHtml .= '</div>';
+                                $listHtml .= '</div>';
+                            }
+                        }
+                        $listHtml .= '</div>';
+
+                        return [
+                            SpatieMediaLibraryFileUpload::make('financial_record_attachments')
+                                ->label('Upload Lampiran')
+                                ->collection('financial-record-attachments')
+                                ->multiple()
+                                ->enableDownload()
+                                ->enableOpen()
+                                ->reorderable()
+                                ->maxSize(10240)
+                                ->acceptedFileTypes([
+                                    'application/pdf',
+                                    'application/msword',
+                                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                    'application/vnd.ms-excel',
+                                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                    'image/jpeg',
+                                    'image/png',
+                                    'application/zip',
+                                ])
+                                ->helperText('Format: PDF/DOC/DOCX/XLS/XLSX/JPG/PNG. Maks 10MB per file.'),
+                            Placeholder::make('uploaded_files_list')
+                                ->label('Daftar File Terunggah')
+                                ->content(new HtmlString($listHtml)),
+                        ];
+                    })
+                    ->action(function (FinancialRecord $record, array $data): void {
+                        Notification::make()
+                            ->title('Lampiran tersimpan')
+                            ->success()
+                            ->send();
+                    }),
+
                 EditAction::make()
                     ->iconButton()
                     ->tooltip('Edit Record'),
@@ -332,50 +421,41 @@ class FinancialRecordsTable
                     ->iconButton(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    BulkAction::make('duplicate')
-                        ->label('Duplicate Selected')
-                        ->icon('heroicon-m-document-duplicate')
-                        ->requiresConfirmation()
-                        ->modalHeading('Duplicate Selected Records')
-                        ->modalDescription('Are you sure you want to duplicate the selected records?')
-                        ->modalSubmitActionLabel('Yes, Duplicate')
-                        ->action(function (Collection $records) {
-                            // Backend authorization check
-                            if (!auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])) {
-                                Notification::make()
-                                    ->title('Access Denied')
-                                    ->body('You do not have permission to perform this action.')
-                                    ->danger()
-                                    ->send();
-                                return;
-                            }
-
-                            DB::transaction(function () use ($records) {
-                                foreach ($records as $record) {
-                                    $newRecord = $record->replicate(['mandiri_expense', 'bos_expense']);
-                                    $newRecord->status = true;
-                                    $newRecord->save();
-
-                                    foreach ($record->expenseItems as $item) {
-                                        $newItem = $item->replicate();
-                                        $newItem->financial_record_id = $newRecord->id;
-                                        $newItem->save();
-                                    }
-
-                                    Log::info("Bulk Replicated FinancialRecord {$record->id} to {$newRecord->id} with items.");
-                                }
-                            });
-
-                            Notification::make()
-                                ->title('Records Duplicated')
-                                ->success()
-                                ->send();
-                        })
-                        ->deselectRecordsAfterCompletion(),
-                ])
+                DeleteBulkAction::make()
+                    ->authorize(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor']))
                     ->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
+                BulkAction::make('duplicate')
+                    ->label('Duplicate Selected')
+                    ->icon('heroicon-m-document-duplicate')
+                    ->authorize(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor']))
+                    ->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor']))
+                    ->requiresConfirmation()
+                    ->modalHeading('Duplicate Selected Records')
+                    ->modalDescription('Are you sure you want to duplicate the selected records?')
+                    ->modalSubmitActionLabel('Yes, Duplicate')
+                    ->action(function (Collection $records) {
+                        DB::transaction(function () use ($records) {
+                            foreach ($records as $record) {
+                                $newRecord = $record->replicate(['mandiri_expense', 'bos_expense']);
+                                $newRecord->status = true;
+                                $newRecord->save();
+
+                                foreach ($record->expenseItems as $item) {
+                                    $newItem = $item->replicate();
+                                    $newItem->financial_record_id = $newRecord->id;
+                                    $newItem->save();
+                                }
+
+                                Log::info("Bulk Replicated FinancialRecord {$record->id} to {$newRecord->id} with items.");
+                            }
+                        });
+
+                        Notification::make()
+                            ->title('Records Duplicated')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
             ])
             ->headerActions([
                 // ExportAction::make()

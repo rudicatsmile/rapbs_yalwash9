@@ -8,6 +8,7 @@ use App\Models\FinancialRecord;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class FinancialRecordsImportButtonsAccessTest extends TestCase
@@ -18,6 +19,7 @@ class FinancialRecordsImportButtonsAccessTest extends TestCase
     {
         parent::setUp();
         $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        Permission::firstOrCreate(['name' => 'ViewAny:FinancialRecord', 'guard_name' => 'web']);
     }
 
     public function test_import_buttons_visible_for_admin()
@@ -25,6 +27,7 @@ class FinancialRecordsImportButtonsAccessTest extends TestCase
         $department = Department::create(['name' => 'IT']);
         $admin = User::factory()->create(['department_id' => $department->id]);
         $admin->assignRole('admin');
+        $admin->givePermissionTo('ViewAny:FinancialRecord');
 
         FinancialRecord::factory()->create([
             'user_id' => $admin->id,
@@ -42,6 +45,7 @@ class FinancialRecordsImportButtonsAccessTest extends TestCase
         $department = Department::create(['name' => 'IT']);
         $user = User::factory()->create(['department_id' => $department->id]);
         $user->assignRole('user');
+        $user->givePermissionTo('ViewAny:FinancialRecord');
 
         FinancialRecord::factory()->create([
             'user_id' => $user->id,
@@ -49,6 +53,8 @@ class FinancialRecordsImportButtonsAccessTest extends TestCase
         ]);
 
         Livewire::actingAs($user)
-            ->test(ListFinancialRecords::class);
+            ->test(ListFinancialRecords::class)
+            ->assertSee('Download Template Import')
+            ->assertSee('Import Excel');
     }
 }

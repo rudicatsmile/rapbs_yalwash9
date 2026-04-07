@@ -9,6 +9,7 @@ use App\Models\User;
 use Filament\Actions\DeleteBulkAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class FinancialRecordsBulkActionAccessTest extends TestCase
@@ -19,6 +20,8 @@ class FinancialRecordsBulkActionAccessTest extends TestCase
     {
         parent::setUp();
         $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+
+        Permission::firstOrCreate(['name' => 'ViewAny:FinancialRecord', 'guard_name' => 'web']);
     }
 
     public function test_bulk_actions_are_visible_to_admin()
@@ -26,6 +29,7 @@ class FinancialRecordsBulkActionAccessTest extends TestCase
         $department = Department::create(['name' => 'IT']);
         $admin = User::factory()->create(['department_id' => $department->id]);
         $admin->assignRole('admin');
+        $admin->givePermissionTo('ViewAny:FinancialRecord');
 
         FinancialRecord::factory()->count(3)->create([
             'user_id' => $admin->id,
@@ -43,6 +47,7 @@ class FinancialRecordsBulkActionAccessTest extends TestCase
         $department = Department::create(['name' => 'IT']);
         $editor = User::factory()->create(['department_id' => $department->id]);
         $editor->assignRole('editor');
+        $editor->givePermissionTo('ViewAny:FinancialRecord');
 
         FinancialRecord::factory()->count(3)->create([
             'user_id' => $editor->id,
@@ -60,6 +65,7 @@ class FinancialRecordsBulkActionAccessTest extends TestCase
         $department = Department::create(['name' => 'IT']);
         $user = User::factory()->create(['department_id' => $department->id]);
         $user->assignRole('user');
+        $user->givePermissionTo('ViewAny:FinancialRecord');
 
         FinancialRecord::factory()->count(3)->create([
             'user_id' => $user->id,
@@ -77,6 +83,7 @@ class FinancialRecordsBulkActionAccessTest extends TestCase
         $department = Department::create(['name' => 'IT']);
         $user = User::factory()->create(['department_id' => $department->id]);
         $user->assignRole('user');
+        $user->givePermissionTo('ViewAny:FinancialRecord');
 
         $records = FinancialRecord::factory()->count(3)->create([
             'user_id' => $user->id,
@@ -85,7 +92,6 @@ class FinancialRecordsBulkActionAccessTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(ListFinancialRecords::class)
-            ->callTableBulkAction('duplicate', $records)
-            ->assertForbidden();
+            ->assertTableBulkActionHidden('duplicate');
     }
 }

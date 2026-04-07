@@ -232,14 +232,14 @@ class RealizationForm
                                 TextInput::make('total_balance')
                                     ->label('Total Saldo')
                                     ->prefix('Rp')
-                                    ->disabled()
+                                    ->readOnly()
                                     ->dehydrated()
                                     ->default(0)
                                     ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                                     ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                                     ->rule(function (Get $get) {
                                         return function (string $attribute, $value, Closure $fail) use ($get) {
-                                            $items = $get('../../expenseItems') ?? [];
+                                            $items = $get('expenseItems') ?? $get('../../expenseItems') ?? [];
 
                                             $totalExpense = 0.0;
                                             $totalRealization = 0.0;

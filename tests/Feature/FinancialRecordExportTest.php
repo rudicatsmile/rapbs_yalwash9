@@ -61,6 +61,8 @@ class FinancialRecordExportTest extends TestCase
         $user = User::factory()->create(['department_id' => $department->id]);
         $role = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $user->assignRole($role);
+        Permission::firstOrCreate(['name' => 'ViewAny:FinancialRecord', 'guard_name' => 'web']);
+        $user->givePermissionTo('ViewAny:FinancialRecord');
 
         $record = FinancialRecord::create([
             'user_id' => $user->id,

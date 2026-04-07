@@ -110,3 +110,26 @@ Ringkasan kinerja keuangan juga ditampilkan langsung pada halaman pembuatan dan 
     - **Grafik Realisasi**: Tren realisasi pengeluaran.
     - **Tabel Varians** (Hanya di Edit Page): Detail selisih anggaran per departemen.
 - **Keamanan**: Hanya pengguna dengan hak akses `view_financial_dashboard` yang dapat melihat widget ini.
+
+### 8. Notifikasi WhatsApp Saat Status Tidak Aktif (Create)
+
+Saat membuat data baru pada menu **RAPB Sekolah** (`/financial-records/create`), toggle **Status Aktif** dapat diubah ke posisi tidak aktif (warna merah). Ketika status menjadi tidak aktif, sistem akan mengirim notifikasi WhatsApp ke nomor departemen yang dipilih pada form.
+
+**Isi notifikasi mencakup:**
+
+- Nama departemen tujuan
+- Informasi status berubah menjadi tidak aktif
+- Ringkasan data financial record (nama history, tanggal, bulan, total pemasukan)
+- Timestamp perubahan status
+
+**Syarat agar notifikasi terkirim:**
+
+- Field **Departemen** wajib dipilih terlebih dahulu
+- Nomor telepon pada data Departemen harus valid (format: `+62...`, `62...`, atau `08...`)
+- Konfigurasi WhatsApp API harus terisi (`WHATSAPP_BASE_URL` dan `WHATSAPP_TOKEN`)
+
+**Perilaku sistem:**
+
+- Jika nomor departemen tidak valid / departemen tidak ditemukan, notifikasi WhatsApp tidak akan dikirim dan user akan mendapat notifikasi error di halaman
+- Jika pengiriman WhatsApp gagal (mis. koneksi/token), sistem menampilkan notifikasi gagal dan mencatat log percobaan pengiriman
+- Untuk mencegah spam, pengiriman WhatsApp hanya dilakukan sekali per sesi toggle tidak aktif, dan akan dapat dikirim ulang setelah status dikembalikan aktif lalu dinonaktifkan lagi

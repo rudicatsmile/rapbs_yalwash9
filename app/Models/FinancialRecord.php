@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class FinancialRecord extends Model
+class FinancialRecord extends Model implements HasMedia
 {
-    use HasFactory;
+    use HasFactory, InteractsWithMedia;
 
     protected $fillable = [
         'user_id',
@@ -103,5 +105,22 @@ class FinancialRecord extends Model
     public function tracks(): HasMany
     {
         return $this->hasMany(FinancialRecordTrack::class);
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('financial-record-attachments')
+            ->useDisk('public')
+            ->acceptsMimeTypes([
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'image/jpeg',
+                'image/png',
+                'application/zip',
+                'text/plain',
+            ]);
     }
 }

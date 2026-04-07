@@ -14,6 +14,12 @@ class ThousandSeparatorFormattingTest extends TestCase
             return '';
         }
 
+        $digits = ltrim($digits, '0');
+
+        if ($digits === '') {
+            return '0';
+        }
+
         return preg_replace('/\B(?=(\d{3})+(?!\d))/', '.', $digits);
     }
 
@@ -45,4 +51,3 @@ class ThousandSeparatorFormattingTest extends TestCase
         $this->assertSame('0', $this->formatThousands('000'));
     }
 }
-
