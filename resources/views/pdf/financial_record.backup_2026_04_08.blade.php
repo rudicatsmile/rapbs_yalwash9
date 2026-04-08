@@ -9,7 +9,7 @@
         .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
         .table th { background-color: #f2f2f2; }
-        .table th.text-right, .table td.text-right { text-align: right !important; }
+        .text-right { text-align: right; }
         .bold { font-weight: bold; }
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; display: inline-block; }
         .badge-success { background-color: #d1fae5; color: #065f46; border: 1px solid #065f46; } /* Green */
@@ -113,36 +113,14 @@
                 </tr>
             </thead>
             <tbody>
-                @php
-                    $record->loadMissing(['realizationExpenseLines', 'expenseItems']);
-                    $linesByExpense = $record->realizationExpenseLines->groupBy('expense_item_id');
-                @endphp
                 @forelse($record->expenseItems as $index => $item)
-                    @php
-                        $itemLines = $linesByExpense->get($item->id) ?? collect();
-                        $aggRealisasi = $itemLines->sum('realisasi');
-                        $saldo = ($item->amount ?? 0) - $aggRealisasi;
-                    @endphp
-                    <tr>
-                        <td>{{ $index + 1 }}</td>
-                        <td>{{ $item->description }}</td>
-                        <td class="text-right">Rp {{ number_format($item->amount, 0, ',', '.') }}</td>
-                        <td class="text-right">Rp {{ number_format($aggRealisasi, 0, ',', '.') }}</td>
-                        <td class="text-right">Rp {{ number_format($saldo, 0, ',', '.') }}</td>
-                    </tr>
-                    @if($itemLines->count() > 0)
-                        @foreach($itemLines as $k => $line)
-                            <tr>
-                                <td style="color:#9ca3af;">—</td>
-                                <td>
-                                    <span style="color:#6b7280;">{{ (string) $line->description }}</span>
-                                </td>
-                                <td class="text-right" style="color:#9ca3af;">—</td>
-                                <td class="text-right">Rp {{ number_format($line->realisasi ?? 0, 0, ',', '.') }}</td>
-                                <td class="text-right" style="color:#9ca3af;">—</td>
-                            </tr>
-                        @endforeach
-                    @endif
+                <tr>
+                    <td>{{ $index + 1 }}</td>
+                    <td>{{ $item->description }}</td>
+                    <td class="text-right">Rp {{ number_format($item->amount, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($item->realisasi ?? 0, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($item->saldo ?? (($item->amount ?? 0) - ($item->realisasi ?? 0)), 0, ',', '.') }}</td>
+                </tr>
                 @empty
                 <tr>
                     <td colspan="5" style="text-align: center;">Tidak ada data pengeluaran.</td>
@@ -151,12 +129,7 @@
                 <tr class="bold" style="background-color: #f9fafb;">
                     <td colspan="2" class="text-right">Total Pengeluaran</td>
                     <td class="text-right">Rp {{ number_format($record->total_expense, 0, ',', '.') }}</td>
-                    <td class="text-right">
-                        @php
-                            $totalRealization = $record->realizationExpenseLines->sum('realisasi');
-                        @endphp
-                        Rp {{ number_format($totalRealization ?? 0, 0, ',', '.') }}
-                    </td>
+                    <td class="text-right">Rp {{ number_format($record->total_realization ?? 0, 0, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($record->total_balance ?? ($record->total_expense - ($record->total_realization ?? 0)), 0, ',', '.') }}</td>
                 </tr>
             </tbody>
@@ -210,3 +183,4 @@
     </div>
 </body>
 </html>
+

@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\FinancialRecords\Schemas;
 
+use App\Models\Department;
+use App\Services\WhatsAppService;
+use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -9,18 +12,14 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
-use App\Models\Department;
-use App\Services\WhatsAppService;
-use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
-
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\HtmlString;
 
 class FinancialRecordForm
@@ -36,7 +35,7 @@ class FinancialRecordForm
                             ->default(false)
                             ->dehydrated(false),
                         Toggle::make('status')
-                            ->label('Status Aktif')
+                            ->label(fn(Get $get) => (bool) $get('status') ? 'Sudah disetujui' : 'Belum disetujui')
                             ->onIcon('heroicon-m-check')
                             ->offIcon('heroicon-m-x-mark')
                             ->onColor('success')
@@ -54,6 +53,7 @@ class FinancialRecordForm
 
                                 if ($isActive) {
                                     $set('wa_inactive_status_notified', false);
+
                                     return;
                                 }
 
@@ -95,7 +95,7 @@ class FinancialRecordForm
                                 }
 
                                 $phone = (string) ($department->phone ?? '');
-                                $waService = new WhatsAppService();
+                                $waService = new WhatsAppService;
 
                                 if (!$waService->isValidPhone($phone)) {
                                     Log::warning('WhatsApp notification skipped: invalid department phone (status inactive)', [
@@ -153,7 +153,7 @@ class FinancialRecordForm
                                     . "Nama History: {$recordName}\n"
                                     . "Tanggal: {$recordDateFormatted}\n"
                                     . "Bulan: {$monthLabel}\n"
-                                    . "Total Pemasukan: Rp " . number_format($incomeTotal, 0, ',', '.') . "\n"
+                                    . 'Total Pemasukan: Rp ' . number_format($incomeTotal, 0, ',', '.') . "\n"
                                     . "Diubah oleh: {$actorName}\n"
                                     . "Waktu: {$timestamp}";
 
@@ -282,7 +282,7 @@ class FinancialRecordForm
                             ->columnSpanFull(),
                     ])->columns(1),
 
-                Section::make('Rencana Pemasukan BOS')
+                Section::make('Rencana Pemasukan BOS dan Lainnya')
                     ->schema([
                         TextInput::make('income_bos')
                             ->label('Pemasukan BOS (Rp)')
@@ -323,7 +323,7 @@ class FinancialRecordForm
                 Section::make('Total Pemasukan')
                     ->schema([
                         TextInput::make('income_total')
-                            ->label('Total Pemasukan Keseluruhan (Fixed + BOS)')
+                            ->label('Total Pemasukan Keseluruhan')
                             ->prefix('Rp')
                             ->readOnly()
                             ->dehydrated()
@@ -331,7 +331,7 @@ class FinancialRecordForm
                             ->stripCharacters('.')
                             ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
                             ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
-                            ->columnSpanFull()
+                            ->columnSpanFull(),
                     ])->columns(1),
 
                 Section::make('Rencana Pengeluaran')
@@ -425,10 +425,12 @@ class FinancialRecordForm
                             })
                             ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
                                 $data['source_type'] = 'Mandiri';
+
                                 return $data;
                             })
                             ->mutateRelationshipDataBeforeSaveUsing(function (array $data): array {
                                 $data['source_type'] = 'Mandiri';
+
                                 return $data;
                             }),
                     ])
