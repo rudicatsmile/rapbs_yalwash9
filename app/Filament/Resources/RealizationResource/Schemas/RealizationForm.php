@@ -132,6 +132,64 @@ class RealizationForm
                                 </style>
                             '))
                             ->columnSpanFull(),
+                        Placeholder::make('realization_expense_draft_persist')
+                            ->hiddenLabel()
+                            ->content(function ($record) {
+                                if (! $record || ! $record->exists) {
+                                    return new HtmlString('');
+                                }
+
+                                $recordId = (int) $record->id;
+
+                                return new HtmlString('
+                                    <script>
+                                        (function () {
+                                            const recordId = '.$recordId.';
+                                            const key = "realization:expenseItems:draft:" + recordId;
+
+                                            function findComponent() {
+                                                const root = document.querySelector("[wire\\\\:id]");
+                                                if (!root || !window.Livewire) return null;
+                                                const id = root.getAttribute("wire:id");
+                                                return window.Livewire.find(id);
+                                            }
+
+                                            function saveDraft() {
+                                                const component = findComponent();
+                                                if (!component) return;
+                                                try {
+                                                    const items = component.get("data.expenseItems");
+                                                    localStorage.setItem(key, JSON.stringify(items ?? []));
+                                                } catch (e) {}
+                                            }
+
+                                            function restoreDraftIfEmpty() {
+                                                const component = findComponent();
+                                                if (!component) return;
+                                                const current = component.get("data.expenseItems");
+                                                if (Array.isArray(current) && current.length) return;
+                                                const raw = localStorage.getItem(key);
+                                                if (!raw) return;
+                                                try {
+                                                    const items = JSON.parse(raw);
+                                                    if (!Array.isArray(items)) return;
+                                                    component.set("data.expenseItems", items);
+                                                } catch (e) {}
+                                            }
+
+                                            window.addEventListener("load", function () {
+                                                restoreDraftIfEmpty();
+                                                const container = document.querySelector(".realization-expense-repeater");
+                                                if (!container) return;
+                                                container.addEventListener("input", function () { queueMicrotask(saveDraft); }, true);
+                                                container.addEventListener("change", function () { queueMicrotask(saveDraft); }, true);
+                                                container.addEventListener("click", function () { queueMicrotask(saveDraft); }, true);
+                                            });
+                                        })();
+                                    </script>
+                                ');
+                            })
+                            ->columnSpanFull(),
                         Repeater::make('expenseItems')
                             ->extraAttributes(['class' => 'realization-expense-repeater'])
                             ->label('Daftar Pengeluaran & Realisasi')
@@ -219,21 +277,6 @@ class RealizationForm
                                             return;
                                         }
 
-                                        $items = $get('../../expenseItems') ?? [];
-                                        $duplicates = collect($items)->filter(function ($item) use ($state) {
-                                            return (string) ($item['expense_item_id'] ?? '') === (string) $state;
-                                        })->count();
-
-                                        if ($duplicates > 1) {
-                                            Notification::make()
-                                                ->title('Sumber sudah dipilih')
-                                                ->body('Pilih sumber anggaran yang berbeda.')
-                                                ->warning()
-                                                ->send();
-
-                                            return;
-                                        }
-
                                         $expenseItem = ExpenseItem::query()
                                             ->where('financial_record_id', $record->id)
                                             ->whereKey($state)
@@ -254,14 +297,17 @@ class RealizationForm
                                         }
 
                                         $budget = (float) ($expenseItem->amount ?? 0);
+                                        $alreadyAllocated = (float) ($expenseItem->allocated_amount ?? 0);
+                                        $remainingAllocation = max(0, $budget - $alreadyAllocated);
+
                                         $realisasi = (float) self::parseMoney($get('realisasi'));
-                                        $saldo = $budget - $realisasi;
+                                        $saldo = $remainingAllocation - $realisasi;
 
                                         if (! $get('description')) {
                                             $set('description', (string) ($expenseItem->description ?? ''));
                                         }
 
-                                        $set('amount', number_format($budget, 0, ',', '.'));
+                                        $set('amount', number_format($remainingAllocation, 0, ',', '.'));
                                         $set('saldo', number_format($saldo, 0, ',', '.'));
 
                                         Log::info('Realization source selected', [
@@ -276,16 +322,7 @@ class RealizationForm
                                     ]),
                                 TextInput::make('amount')
                                     ->label('Anggaran')
-                                    ->readOnly()
                                     ->dehydrated()
-                                    ->formatStateUsing(fn ($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
-                                    ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
-                                    ->columnSpan([
-                                        'default' => 12,
-                                        'md' => 2,
-                                    ]),
-                                TextInput::make('realisasi')
-                                    ->label('Realisasi')
                                     ->stripCharacters('.')
                                     ->required()
                                     ->formatStateUsing(fn ($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
@@ -297,29 +334,203 @@ class RealizationForm
                                     })
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
-                                        $realisasi = (float) self::parseMoney($state);
-                                        $amount = (float) self::parseMoney($get('amount'));
-                                        $saldo = $amount - $realisasi;
-
-                                        $set('saldo', number_format($saldo, 0, ',', '.'));
-
                                         $items = $get('../../expenseItems') ?? [];
+                                        $items = array_values(is_array($items) ? $items : []);
+
+                                        $sourceIds = array_map(
+                                            fn ($item) => (string) ($item['expense_item_id'] ?? ''),
+                                            $items
+                                        );
+                                        $sourceIds = array_filter($sourceIds, fn ($id) => $id !== '');
+                                        $sourceCounts = array_count_values($sourceIds);
+
+                                        $runningAllocated = [];
+                                        $runningRealisasi = [];
+                                        $firstInsufficient = null;
+
                                         $totalExpense = 0.0;
                                         $totalRealization = 0.0;
 
-                                        foreach ($items as $item) {
+                                        foreach ($items as $index => $item) {
+                                            $sourceId = (string) ($item['expense_item_id'] ?? '');
                                             $itemAmount = (float) self::parseMoney($item['amount'] ?? 0);
                                             $itemRealisasi = (float) self::parseMoney($item['realisasi'] ?? 0);
 
                                             $totalExpense += $itemAmount;
                                             $totalRealization += $itemRealisasi;
+
+                                            if ($sourceId !== '') {
+                                                $runningAllocated[$sourceId] = ($runningAllocated[$sourceId] ?? 0.0) + $itemAmount;
+                                                $runningRealisasi[$sourceId] = ($runningRealisasi[$sourceId] ?? 0.0) + $itemRealisasi;
+
+                                                if (($sourceCounts[$sourceId] ?? 0) > 1) {
+                                                    $saldoRow = $runningAllocated[$sourceId] - $runningRealisasi[$sourceId];
+                                                    $items[$index]['saldo'] = number_format($saldoRow, 0, ',', '.');
+
+                                                    if ($firstInsufficient === null && $saldoRow < 0) {
+                                                        $availableBefore = ($runningAllocated[$sourceId] - ($runningRealisasi[$sourceId] - $itemRealisasi));
+                                                        $firstInsufficient = [
+                                                            'index' => $index,
+                                                            'source_id' => $sourceId,
+                                                            'available' => $availableBefore,
+                                                            'realisasi' => $itemRealisasi,
+                                                        ];
+                                                    }
+
+                                                    continue;
+                                                }
+                                            }
+
+                                            $items[$index]['saldo'] = number_format($itemAmount - $itemRealisasi, 0, ',', '.');
                                         }
 
                                         $totalBalance = $totalExpense - $totalRealization;
 
+                                        $set('../../expenseItems', $items);
                                         $set('../../total_expense', number_format($totalExpense, 0, ',', '.'));
                                         $set('../../total_realization', number_format($totalRealization, 0, ',', '.'));
                                         $set('../../total_balance', number_format($totalBalance, 0, ',', '.'));
+
+                                        if ($firstInsufficient !== null) {
+                                            Notification::make()
+                                                ->title('Saldo sumber tidak cukup')
+                                                ->body('Terdeteksi duplikasi sumber. Sisa saldo sebelum baris ke-'.($firstInsufficient['index'] + 1).' adalah Rp '.number_format((float) $firstInsufficient['available'], 0, ',', '.').', namun realisasi pada baris tersebut Rp '.number_format((float) $firstInsufficient['realisasi'], 0, ',', '.').'.')
+                                                ->warning()
+                                                ->send();
+                                        }
+                                    })
+                                    ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                                    ->extraInputAttributes([
+                                        'inputmode' => 'numeric',
+                                        'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
+                                    ])
+                                    ->columnSpan([
+                                        'default' => 12,
+                                        'md' => 2,
+                                    ]),
+                                TextInput::make('realisasi')
+                                    ->label('Realisasi')
+                                    ->stripCharacters('.')
+                                    ->required()
+                                    ->formatStateUsing(fn ($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
+                                    ->rule(['integer', 'min:0', 'max:2000000000'])
+                                    ->rule(function (Get $get) {
+                                        return function (string $attribute, $value, \Closure $fail) use ($get): void {
+                                            if (! preg_match('/expenseItems\.(\d+)\.realisasi$/', $attribute, $matches)) {
+                                                return;
+                                            }
+
+                                            $index = (int) $matches[1];
+                                            $items = $get('../../expenseItems') ?? [];
+                                            $items = array_values(is_array($items) ? $items : []);
+
+                                            $sourceIds = array_map(
+                                                fn ($item) => (string) ($item['expense_item_id'] ?? ''),
+                                                $items
+                                            );
+                                            $sourceIds = array_filter($sourceIds, fn ($id) => $id !== '');
+                                            $sourceCounts = array_count_values($sourceIds);
+
+                                            $sourceId = (string) ($items[$index]['expense_item_id'] ?? '');
+
+                                            if ($sourceId === '' || ($sourceCounts[$sourceId] ?? 0) < 2) {
+                                                return;
+                                            }
+
+                                            $runningAllocated = 0.0;
+                                            $runningRealisasiBefore = 0.0;
+
+                                            for ($i = 0; $i < $index; $i++) {
+                                                $row = $items[$i] ?? [];
+
+                                                if ((string) ($row['expense_item_id'] ?? '') !== $sourceId) {
+                                                    continue;
+                                                }
+
+                                                $runningAllocated += (float) self::parseMoney($row['amount'] ?? 0);
+                                                $runningRealisasiBefore += (float) self::parseMoney($row['realisasi'] ?? 0);
+                                            }
+
+                                            $runningAllocated += (float) self::parseMoney($items[$index]['amount'] ?? 0);
+                                            $realisasiNow = (float) self::parseMoney($value);
+                                            $availableBefore = $runningAllocated - $runningRealisasiBefore;
+
+                                            if ($realisasiNow > $availableBefore) {
+                                                $fail('Saldo sumber tidak cukup. Sisa saldo sebelum baris ini Rp '.number_format($availableBefore, 0, ',', '.').', realisasi yang dimasukkan Rp '.number_format($realisasiNow, 0, ',', '.').'.');
+                                            }
+                                        };
+                                    })
+                                    ->hint(function (TextInput $component) {
+                                        $target = $component->getStatePath();
+
+                                        return new HtmlString('<span wire:loading wire:target="'.e($target).'" style="font-size:12px;opacity:.75;">Menghitung...</span>');
+                                    })
+                                    ->live(onBlur: true)
+                                    ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
+                                        $items = $get('../../expenseItems') ?? [];
+                                        $items = array_values(is_array($items) ? $items : []);
+
+                                        $sourceIds = array_map(
+                                            fn ($item) => (string) ($item['expense_item_id'] ?? ''),
+                                            $items
+                                        );
+                                        $sourceIds = array_filter($sourceIds, fn ($id) => $id !== '');
+                                        $sourceCounts = array_count_values($sourceIds);
+
+                                        $runningAllocated = [];
+                                        $runningRealisasi = [];
+                                        $firstInsufficient = null;
+
+                                        $totalExpense = 0.0;
+                                        $totalRealization = 0.0;
+
+                                        foreach ($items as $index => $item) {
+                                            $sourceId = (string) ($item['expense_item_id'] ?? '');
+                                            $itemAmount = (float) self::parseMoney($item['amount'] ?? 0);
+                                            $itemRealisasi = (float) self::parseMoney($item['realisasi'] ?? 0);
+
+                                            $totalExpense += $itemAmount;
+                                            $totalRealization += $itemRealisasi;
+
+                                            if ($sourceId !== '') {
+                                                $runningAllocated[$sourceId] = ($runningAllocated[$sourceId] ?? 0.0) + $itemAmount;
+                                                $runningRealisasi[$sourceId] = ($runningRealisasi[$sourceId] ?? 0.0) + $itemRealisasi;
+
+                                                if (($sourceCounts[$sourceId] ?? 0) > 1) {
+                                                    $saldoRow = $runningAllocated[$sourceId] - $runningRealisasi[$sourceId];
+                                                    $items[$index]['saldo'] = number_format($saldoRow, 0, ',', '.');
+
+                                                    if ($firstInsufficient === null && $saldoRow < 0) {
+                                                        $availableBefore = ($runningAllocated[$sourceId] - ($runningRealisasi[$sourceId] - $itemRealisasi));
+                                                        $firstInsufficient = [
+                                                            'index' => $index,
+                                                            'source_id' => $sourceId,
+                                                            'available' => $availableBefore,
+                                                            'realisasi' => $itemRealisasi,
+                                                        ];
+                                                    }
+
+                                                    continue;
+                                                }
+                                            }
+
+                                            $items[$index]['saldo'] = number_format($itemAmount - $itemRealisasi, 0, ',', '.');
+                                        }
+
+                                        $totalBalance = $totalExpense - $totalRealization;
+
+                                        $set('../../expenseItems', $items);
+                                        $set('../../total_expense', number_format($totalExpense, 0, ',', '.'));
+                                        $set('../../total_realization', number_format($totalRealization, 0, ',', '.'));
+                                        $set('../../total_balance', number_format($totalBalance, 0, ',', '.'));
+
+                                        if ($firstInsufficient !== null) {
+                                            Notification::make()
+                                                ->title('Saldo sumber tidak cukup')
+                                                ->body('Terdeteksi duplikasi sumber. Sisa saldo sebelum baris ke-'.($firstInsufficient['index'] + 1).' adalah Rp '.number_format((float) $firstInsufficient['available'], 0, ',', '.').', namun realisasi pada baris tersebut Rp '.number_format((float) $firstInsufficient['realisasi'], 0, ',', '.').'.')
+                                                ->warning()
+                                                ->send();
+                                        }
                                     })
                                     ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
                                     ->extraInputAttributes([

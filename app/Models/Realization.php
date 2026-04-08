@@ -68,6 +68,11 @@ class Realization extends Model implements HasMedia
         return $this->hasMany(RealizationTrack::class, 'financial_record_id');
     }
 
+    public function realizationExpenseLines(): HasMany
+    {
+        return $this->hasMany(RealizationExpenseLine::class, 'financial_record_id');
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('realization-attachments')

@@ -53,6 +53,7 @@ class RealizationTest extends TestCase
                     [
                         'description' => 'Item 1',
                         'expense_item_id' => (string) $expenseItem->id,
+                        'amount' => '200000',
                         'realisasi' => '100000',
                     ],
                 ],
@@ -119,6 +120,7 @@ class RealizationTest extends TestCase
                     [
                         'description' => 'Test Item',
                         'expense_item_id' => (string) $expenseItem->id,
+                        'amount' => '1000000',
                         'realisasi' => '500000',
                     ],
                 ],
@@ -162,11 +164,13 @@ class RealizationTest extends TestCase
                     [
                         'description' => 'Item 1',
                         'expense_item_id' => (string) $item1->id,
+                        'amount' => '100',
                         'realisasi' => '50',
                     ],
                     [
                         'description' => 'Item 2',
                         'expense_item_id' => (string) $item2->id,
+                        'amount' => '200',
                         'realisasi' => '100',
                     ],
                 ],
@@ -209,6 +213,7 @@ class RealizationTest extends TestCase
                     [
                         'description' => 'Item 1',
                         'expense_item_id' => (string) $expenseItem->id,
+                        'amount' => '100',
                         'realisasi' => '-10',
                     ],
                 ],
@@ -244,6 +249,7 @@ class RealizationTest extends TestCase
                     [
                         'description' => 'Item 1',
                         'expense_item_id' => (string) $expenseItem->id,
+                        'amount' => '100',
                         'realisasi' => '0',
                     ],
                 ],
@@ -275,6 +281,7 @@ class RealizationTest extends TestCase
                     [
                         'description' => 'Test Item',
                         'expense_item_id' => (string) $expenseItem->id,
+                        'amount' => '100000',
                         'realisasi' => '150000',
                     ],
                 ],

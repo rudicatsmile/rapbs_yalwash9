@@ -87,6 +87,7 @@ class NotificationEndToEndTest extends TestCase
                     [
                         'description' => 'Item 1',
                         'expense_item_id' => (string) $expenseItem->id,
+                        'amount' => '100',
                         'realisasi' => '0',
                     ],
                 ],

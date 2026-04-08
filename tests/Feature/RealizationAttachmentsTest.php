@@ -74,6 +74,7 @@ class RealizationAttachmentsTest extends TestCase
                     [
                         'description' => 'Item 1',
                         'expense_item_id' => (string) $expenseItem->id,
+                        'amount' => '100',
                         'realisasi' => '0',
                     ],
                 ],
@@ -124,6 +125,7 @@ class RealizationAttachmentsTest extends TestCase
                     [
                         'description' => 'Item 1',
                         'expense_item_id' => (string) $expenseItem->id,
+                        'amount' => '100',
                         'realisasi' => '0',
                     ],
                 ],

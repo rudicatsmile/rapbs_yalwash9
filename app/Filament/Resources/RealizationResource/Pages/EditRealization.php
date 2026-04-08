@@ -4,12 +4,14 @@ namespace App\Filament\Resources\RealizationResource\Pages;
 
 use App\Filament\Resources\RealizationResource;
 use App\Models\ExpenseItem;
+use App\Models\RealizationExpenseLine;
 use App\Models\User;
 use Filament\Actions;
 use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -19,50 +21,95 @@ class EditRealization extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $items = ExpenseItem::query()
-            ->where('financial_record_id', $this->record->id)
-            ->where(function ($query) {
-                $query
-                    ->where('is_selected_for_realization', true)
-                    ->orWhere('realisasi', '<>', 0)
-                    ->orWhere('saldo', '<>', 0);
-            })
-            ->orderBy('id')
-            ->get();
+        $lines = $this->record->realizationExpenseLines()->orderBy('id')->get();
 
-        $data['expenseItems'] = $items
-            ->map(function (ExpenseItem $item) {
-                $amount = (float) ($item->amount ?? 0);
-                $realisasi = (float) ($item->realisasi ?? 0);
-                $saldo = $amount - $realisasi;
+        if ($lines->isNotEmpty()) {
+            $sourceCounts = $lines
+                ->pluck('expense_item_id')
+                ->map(fn ($id) => (string) $id)
+                ->countBy()
+                ->all();
 
-                return [
-                    'description' => (string) $item->description,
-                    'expense_item_id' => (string) $item->id,
+            $runningAllocated = [];
+            $runningRealisasi = [];
+            $expenseItems = [];
+
+            foreach ($lines as $line) {
+                $sourceId = (string) $line->expense_item_id;
+                $amount = (float) ($line->allocated_amount ?? 0);
+                $realisasi = (float) ($line->realisasi ?? 0);
+
+                if (($sourceCounts[$sourceId] ?? 0) > 1) {
+                    $runningAllocated[$sourceId] = ($runningAllocated[$sourceId] ?? 0.0) + $amount;
+                    $runningRealisasi[$sourceId] = ($runningRealisasi[$sourceId] ?? 0.0) + $realisasi;
+                    $saldo = $runningAllocated[$sourceId] - $runningRealisasi[$sourceId];
+                } else {
+                    $saldo = $amount - $realisasi;
+                }
+
+                $expenseItems[] = [
+                    'description' => (string) $line->description,
+                    'expense_item_id' => (string) $line->expense_item_id,
                     'amount' => number_format($amount, 0, ',', '.'),
                     'realisasi' => number_format($realisasi, 0, ',', '.'),
                     'saldo' => number_format($saldo, 0, ',', '.'),
                 ];
-            })
-            ->values()
-            ->all();
+            }
 
-        if (! empty($data['expenseItems'])) {
-            $totalExpense = (float) ExpenseItem::query()
-                ->where('financial_record_id', $this->record->id)
-                ->sum('amount');
+            $data['expenseItems'] = $expenseItems;
 
-            $totalRealization = (float) ExpenseItem::query()
-                ->where('financial_record_id', $this->record->id)
-                ->sum('realisasi');
+            $totalExpense = (float) $lines->sum('allocated_amount');
+            $totalRealization = (float) $lines->sum('realisasi');
 
             $data['total_expense'] = $totalExpense;
             $data['total_realization'] = $totalRealization;
             $data['total_balance'] = $totalExpense - $totalRealization;
         } else {
-            $data['total_expense'] = null;
-            $data['total_realization'] = null;
-            $data['total_balance'] = null;
+            $items = ExpenseItem::query()
+                ->where('financial_record_id', $this->record->id)
+                ->where(function ($query) {
+                    $query
+                        ->where('is_selected_for_realization', true)
+                        ->orWhere('realisasi', '<>', 0)
+                        ->orWhere('saldo', '<>', 0);
+                })
+                ->orderBy('id')
+                ->get();
+
+            $data['expenseItems'] = $items
+                ->map(function (ExpenseItem $item) {
+                    $amount = (float) ($item->allocated_amount ?? $item->amount ?? 0);
+                    $realisasi = (float) ($item->realisasi ?? 0);
+                    $saldo = $amount - $realisasi;
+
+                    return [
+                        'description' => (string) $item->description,
+                        'expense_item_id' => (string) $item->id,
+                        'amount' => number_format($amount, 0, ',', '.'),
+                        'realisasi' => number_format($realisasi, 0, ',', '.'),
+                        'saldo' => number_format($saldo, 0, ',', '.'),
+                    ];
+                })
+                ->values()
+                ->all();
+
+            if (! empty($data['expenseItems'])) {
+                $totalExpense = 0.0;
+                $totalRealization = 0.0;
+
+                foreach ($items as $item) {
+                    $totalExpense += (float) ($item->allocated_amount ?? $item->amount ?? 0);
+                    $totalRealization += (float) ($item->realisasi ?? 0);
+                }
+
+                $data['total_expense'] = $totalExpense;
+                $data['total_realization'] = $totalRealization;
+                $data['total_balance'] = $totalExpense - $totalRealization;
+            } else {
+                $data['total_expense'] = null;
+                $data['total_realization'] = null;
+                $data['total_balance'] = null;
+            }
         }
 
         return $data;
@@ -130,30 +177,26 @@ class EditRealization extends EditRecord
         $items = $state['expenseItems'] ?? [];
 
         $errors = [];
+        $normalizedItems = [];
 
-        ExpenseItem::query()
-            ->where('financial_record_id', $this->record->id)
-            ->update([
-                'realisasi' => 0,
-                'saldo' => 0,
-                'is_selected_for_realization' => false,
-            ]);
+        $sourceIds = [];
 
-        $expenseItemIds = collect(array_values($items))
-            ->pluck('expense_item_id')
-            ->filter(fn ($id) => filled($id))
-            ->map(fn ($id) => (string) $id)
-            ->all();
+        foreach ($items as $item) {
+            $id = data_get($item, 'expense_item_id');
 
-        $duplicateIds = collect($expenseItemIds)
-            ->countBy()
-            ->filter(fn ($count) => $count > 1)
-            ->keys()
-            ->all();
+            if (filled($id)) {
+                $sourceIds[] = (string) $id;
+            }
+        }
+
+        $sourceCounts = array_count_values($sourceIds);
+        $runningAllocated = [];
+        $runningRealisasi = [];
 
         foreach (array_values($items) as $index => $item) {
             $description = trim((string) ($item['description'] ?? ''));
             $expenseItemId = $item['expense_item_id'] ?? null;
+            $rawAllocatedAmount = $item['amount'] ?? null;
             $rawRealisasi = $item['realisasi'] ?? null;
 
             if ($description === '') {
@@ -164,8 +207,8 @@ class EditRealization extends EditRecord
                 $errors["data.expenseItems.{$index}.expense_item_id"] = 'Sumber anggaran wajib dipilih.';
             }
 
-            if ($expenseItemId && in_array((string) $expenseItemId, $duplicateIds, true)) {
-                $errors["data.expenseItems.{$index}.expense_item_id"] = 'Sumber anggaran tidak boleh duplikat.';
+            if ($rawAllocatedAmount === null || $rawAllocatedAmount === '') {
+                $errors["data.expenseItems.{$index}.amount"] = 'Anggaran wajib diisi.';
             }
 
             if ($rawRealisasi === null || $rawRealisasi === '') {
@@ -186,7 +229,40 @@ class EditRealization extends EditRecord
                 continue;
             }
 
+            $allocatedAmount = (float) $this->parseMoney($rawAllocatedAmount);
             $realisasi = (float) $this->parseMoney($rawRealisasi);
+
+            if ($expenseItemId && ($sourceCounts[(string) $expenseItemId] ?? 0) > 1) {
+                $sourceKey = (string) $expenseItemId;
+                $runningAllocated[$sourceKey] = ($runningAllocated[$sourceKey] ?? 0.0) + $allocatedAmount;
+                $runningRealisasi[$sourceKey] = ($runningRealisasi[$sourceKey] ?? 0.0) + $realisasi;
+
+                if ($runningRealisasi[$sourceKey] > $runningAllocated[$sourceKey]) {
+                    $availableBefore = $runningAllocated[$sourceKey] - ($runningRealisasi[$sourceKey] - $realisasi);
+
+                    $errors["data.expenseItems.{$index}.realisasi"] = 'Saldo sumber tidak cukup. Sisa saldo sebelum baris ini Rp '.number_format($availableBefore, 0, ',', '.').', realisasi yang dimasukkan Rp '.number_format($realisasi, 0, ',', '.').'.';
+
+                    continue;
+                }
+            }
+
+            if ($allocatedAmount < 0) {
+                $errors["data.expenseItems.{$index}.amount"] = 'Anggaran harus bernilai positif.';
+
+                continue;
+            }
+
+            if ($allocatedAmount > 2000000000) {
+                $errors["data.expenseItems.{$index}.amount"] = 'Anggaran maksimal 2.000.000.000.';
+
+                continue;
+            }
+
+            if (floor($allocatedAmount) !== $allocatedAmount) {
+                $errors["data.expenseItems.{$index}.amount"] = 'Anggaran harus berupa angka bulat.';
+
+                continue;
+            }
 
             if ($realisasi < 0) {
                 $errors["data.expenseItems.{$index}.realisasi"] = 'Realisasi harus bernilai positif.';
@@ -206,33 +282,91 @@ class EditRealization extends EditRecord
                 continue;
             }
 
-            $expenseItem->description = $description;
-            $expenseItem->realisasi = $realisasi;
-            $expenseItem->saldo = (float) $expenseItem->amount - $realisasi;
-            $expenseItem->is_selected_for_realization = true;
-            $expenseItem->save();
-
-            Log::info('Realization expense item updated', [
-                'realization_id' => $this->record->id,
-                'expense_item_id' => (int) $expenseItem->id,
-                'user_id' => auth()->id(),
+            $normalizedItems[] = [
+                'expense_item_id' => (string) $expenseItemId,
+                'description' => $description,
+                'allocated_amount' => $allocatedAmount,
                 'realisasi' => $realisasi,
-            ]);
+            ];
         }
 
         if ($errors) {
             throw ValidationException::withMessages($errors);
         }
 
+        RealizationExpenseLine::query()
+            ->where('financial_record_id', $this->record->id)
+            ->delete();
+
+        foreach ($normalizedItems as $item) {
+            RealizationExpenseLine::query()->create([
+                'financial_record_id' => $this->record->id,
+                'expense_item_id' => $item['expense_item_id'],
+                'description' => $item['description'],
+                'allocated_amount' => $item['allocated_amount'],
+                'realisasi' => $item['realisasi'],
+            ]);
+        }
+
         $this->record->refresh();
 
-        $totalExpense = (float) $this->record->expenseItems()->sum('amount');
-        $totalRealization = (float) $this->record->expenseItems()->sum('realisasi');
+        $lines = $this->record->realizationExpenseLines()->get();
+        $totalExpense = (float) $lines->sum('allocated_amount');
+        $totalRealization = (float) $lines->sum('realisasi');
         $totalBalance = $totalExpense - $totalRealization;
 
         $this->data['total_expense'] = $totalExpense;
         $this->data['total_realization'] = $totalRealization;
         $this->data['total_balance'] = $totalBalance;
+
+        ExpenseItem::query()
+            ->where('financial_record_id', $this->record->id)
+            ->update([
+                'realisasi' => 0,
+                'saldo' => DB::raw('amount'),
+                'allocated_amount' => 0,
+                'is_selected_for_realization' => false,
+            ]);
+
+        $byExpenseItemId = [];
+
+        foreach ($normalizedItems as $item) {
+            $key = (string) $item['expense_item_id'];
+
+            if (! array_key_exists($key, $byExpenseItemId)) {
+                $byExpenseItemId[$key] = [
+                    'sum_allocated' => 0.0,
+                    'sum_realisasi' => 0.0,
+                ];
+            }
+
+            $byExpenseItemId[$key]['sum_allocated'] += (float) $item['allocated_amount'];
+            $byExpenseItemId[$key]['sum_realisasi'] += (float) $item['realisasi'];
+        }
+
+        foreach ($byExpenseItemId as $expenseItemId => $sums) {
+            $expenseItem = $this->record->expenseItems()
+                ->whereKey($expenseItemId)
+                ->first();
+
+            if (! $expenseItem) {
+                continue;
+            }
+
+            $expenseItem->allocated_amount = $sums['sum_allocated'];
+            $expenseItem->realisasi = $sums['sum_realisasi'];
+            $expenseItem->saldo = (float) $expenseItem->amount - $sums['sum_realisasi'];
+            $expenseItem->is_selected_for_realization = true;
+            $expenseItem->save();
+
+            Log::info('Realization expense item aggregated', [
+                'realization_id' => $this->record->id,
+                'expense_item_id' => (int) $expenseItem->id,
+                'user_id' => auth()->id(),
+                'allocated_amount' => $expenseItem->allocated_amount,
+                'realisasi' => $expenseItem->realisasi,
+            ]);
+        }
     }
 
     protected function parseMoney($value): float

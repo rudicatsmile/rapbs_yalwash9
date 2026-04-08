@@ -59,11 +59,13 @@ class RealizationBalanceValidationTest extends TestCase
                     [
                         'description' => 'Item 1',
                         'expense_item_id' => (string) $item1->id,
+                        'amount' => '100',
                         'realisasi' => '150',
                     ],
                     [
                         'description' => 'Item 2',
                         'expense_item_id' => (string) $item2->id,
+                        'amount' => '300',
                         'realisasi' => '200',
                     ],
                 ],
@@ -113,11 +115,13 @@ class RealizationBalanceValidationTest extends TestCase
                     [
                         'description' => 'Item 1',
                         'expense_item_id' => (string) $item1->id,
+                        'amount' => '100',
                         'realisasi' => '150',
                     ],
                     [
                         'description' => 'Item 2',
                         'expense_item_id' => (string) $item2->id,
+                        'amount' => '100',
                         'realisasi' => '100',
                     ],
                 ],
