@@ -30,8 +30,7 @@ class EditRealization extends EditRecord
                 ->countBy()
                 ->all();
 
-            $runningAllocated = [];
-            $runningRealisasi = [];
+            $runningSaldo = [];
             $expenseItems = [];
 
             foreach ($lines as $line) {
@@ -40,17 +39,24 @@ class EditRealization extends EditRecord
                 $realisasi = (float) ($line->realisasi ?? 0);
 
                 if (($sourceCounts[$sourceId] ?? 0) > 1) {
-                    $runningAllocated[$sourceId] = ($runningAllocated[$sourceId] ?? 0.0) + $amount;
-                    $runningRealisasi[$sourceId] = ($runningRealisasi[$sourceId] ?? 0.0) + $realisasi;
-                    $saldo = $runningAllocated[$sourceId] - $runningRealisasi[$sourceId];
+                    if (! array_key_exists($sourceId, $runningSaldo)) {
+                        $displayAmount = $amount;
+                        $saldo = $displayAmount - $realisasi;
+                    } else {
+                        $displayAmount = max(0, (float) $runningSaldo[$sourceId]);
+                        $saldo = $displayAmount - $realisasi;
+                    }
+
+                    $runningSaldo[$sourceId] = $saldo;
                 } else {
+                    $displayAmount = $amount;
                     $saldo = $amount - $realisasi;
                 }
 
                 $expenseItems[] = [
                     'description' => (string) $line->description,
                     'expense_item_id' => (string) $line->expense_item_id,
-                    'amount' => number_format($amount, 0, ',', '.'),
+                    'amount' => number_format($displayAmount, 0, ',', '.'),
                     'realisasi' => number_format($realisasi, 0, ',', '.'),
                     'saldo' => number_format($saldo, 0, ',', '.'),
                 ];
@@ -190,8 +196,9 @@ class EditRealization extends EditRecord
         }
 
         $sourceCounts = array_count_values($sourceIds);
-        $runningAllocated = [];
-        $runningRealisasi = [];
+        $budgets = [];
+        $spent = [];
+        $isFirstRowForSource = [];
 
         foreach (array_values($items) as $index => $item) {
             $description = trim((string) ($item['description'] ?? ''));
@@ -207,8 +214,13 @@ class EditRealization extends EditRecord
                 $errors["data.expenseItems.{$index}.expense_item_id"] = 'Sumber anggaran wajib dipilih.';
             }
 
+            $isDuplicateSource = $expenseItemId && (($sourceCounts[(string) $expenseItemId] ?? 0) > 1);
+            $sourceKey = $expenseItemId ? (string) $expenseItemId : null;
+
             if ($rawAllocatedAmount === null || $rawAllocatedAmount === '') {
-                $errors["data.expenseItems.{$index}.amount"] = 'Anggaran wajib diisi.';
+                if (! $isDuplicateSource || ! $sourceKey || ! array_key_exists($sourceKey, $isFirstRowForSource)) {
+                    $errors["data.expenseItems.{$index}.amount"] = 'Anggaran wajib diisi.';
+                }
             }
 
             if ($rawRealisasi === null || $rawRealisasi === '') {
@@ -232,18 +244,24 @@ class EditRealization extends EditRecord
             $allocatedAmount = (float) $this->parseMoney($rawAllocatedAmount);
             $realisasi = (float) $this->parseMoney($rawRealisasi);
 
-            if ($expenseItemId && ($sourceCounts[(string) $expenseItemId] ?? 0) > 1) {
-                $sourceKey = (string) $expenseItemId;
-                $runningAllocated[$sourceKey] = ($runningAllocated[$sourceKey] ?? 0.0) + $allocatedAmount;
-                $runningRealisasi[$sourceKey] = ($runningRealisasi[$sourceKey] ?? 0.0) + $realisasi;
+            if ($isDuplicateSource && $sourceKey) {
+                if (! array_key_exists($sourceKey, $isFirstRowForSource)) {
+                    $isFirstRowForSource[$sourceKey] = true;
+                    $budgets[$sourceKey] = $allocatedAmount;
+                    $spent[$sourceKey] = 0.0;
+                } else {
+                    $allocatedAmount = 0.0;
+                }
 
-                if ($runningRealisasi[$sourceKey] > $runningAllocated[$sourceKey]) {
-                    $availableBefore = $runningAllocated[$sourceKey] - ($runningRealisasi[$sourceKey] - $realisasi);
+                $availableBefore = (float) ($budgets[$sourceKey] ?? 0) - (float) ($spent[$sourceKey] ?? 0);
 
+                if ($realisasi > $availableBefore) {
                     $errors["data.expenseItems.{$index}.realisasi"] = 'Saldo sumber tidak cukup. Sisa saldo sebelum baris ini Rp '.number_format($availableBefore, 0, ',', '.').', realisasi yang dimasukkan Rp '.number_format($realisasi, 0, ',', '.').'.';
 
                     continue;
                 }
+
+                $spent[$sourceKey] = (float) ($spent[$sourceKey] ?? 0) + $realisasi;
             }
 
             if ($allocatedAmount < 0) {

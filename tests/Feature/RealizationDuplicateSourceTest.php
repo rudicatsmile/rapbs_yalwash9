@@ -51,13 +51,13 @@ class RealizationDuplicateSourceTest extends TestCase
                     [
                         'description' => 'Belanja A',
                         'expense_item_id' => (string) $expenseItem->id,
-                        'amount' => '400',
+                        'amount' => '1000',
                         'realisasi' => '100',
                     ],
                     [
                         'description' => 'Belanja B',
                         'expense_item_id' => (string) $expenseItem->id,
-                        'amount' => '600',
+                        'amount' => '0',
                         'realisasi' => '200',
                     ],
                 ],
@@ -74,7 +74,7 @@ class RealizationDuplicateSourceTest extends TestCase
             'financial_record_id' => $record->id,
             'expense_item_id' => $expenseItem->id,
             'description' => 'Belanja A',
-            'allocated_amount' => 400,
+            'allocated_amount' => 1000,
             'realisasi' => 100,
         ]);
 
@@ -82,7 +82,7 @@ class RealizationDuplicateSourceTest extends TestCase
             'financial_record_id' => $record->id,
             'expense_item_id' => $expenseItem->id,
             'description' => 'Belanja B',
-            'allocated_amount' => 600,
+            'allocated_amount' => 0,
             'realisasi' => 200,
         ]);
 

@@ -65,6 +65,8 @@ class RealizationDuplicateSourceSaldoInitialLoadTest extends TestCase
 
         $items = array_values($component->get('data.expenseItems'));
 
+        $this->assertSame('500.000', $items[0]['amount'] ?? null);
+        $this->assertSame('400.000', $items[1]['amount'] ?? null);
         $this->assertSame('400.000', $items[0]['saldo'] ?? null);
         $this->assertSame('0', $items[1]['saldo'] ?? null);
     }

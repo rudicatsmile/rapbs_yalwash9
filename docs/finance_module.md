@@ -58,7 +58,8 @@ Modul ini dirancang untuk membantu Anda mencatat rencana pemasukan dan pengeluar
     - Masukkan nilai pada kolom **Realisasi** untuk setiap item.
     - Kolom **Saldo** akan terhitung otomatis (Anggaran - Realisasi).
     - Baris yang ditambahkan akan tetap muncul setelah disimpan, termasuk jika nilai Realisasi diisi 0.
-    - Jika **Sumber** dipilih lebih dari satu baris (duplikat), maka **Saldo** pada baris-baris duplikat dihitung secara kumulatif dari baris pertama hingga baris tersebut (Anggaran kumulatif − Realisasi kumulatif).
+    - Jika **Sumber** dipilih lebih dari satu baris (duplikat), maka **Saldo** pada baris-baris duplikat dihitung berdasarkan saldo tersisa dari baris sebelumnya (setara dengan Anggaran baris pertama − Realisasi kumulatif).
+    - Jika **Sumber** duplikat, maka pada baris kedua dan seterusnya, kolom **Anggaran** akan menampilkan sisa saldo dari baris sebelumnya (otomatis ter-update ketika baris sebelumnya berubah).
 
 **Catatan layout (UI):**
 

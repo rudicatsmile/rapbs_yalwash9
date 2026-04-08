@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RealizationResource\Schemas;
 
 use App\Models\ExpenseItem;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -129,6 +130,38 @@ class RealizationForm
                                             padding-top: 0 !important;
                                         }
                                     }
+
+                                    .realization-expense-repeater .fi-fo-repeater-add {
+                                        margin-top: 0.75rem;
+                                    }
+
+                                    .realization-expense-repeater .fi-fo-repeater-add .realization-add-btn {
+                                        width: 100%;
+                                        justify-content: center;
+                                        border-radius: 0.85rem;
+                                        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 55%, #1e40af 100%);
+                                        border: 1px solid rgba(255, 255, 255, 0.18);
+                                        box-shadow: 0 14px 30px rgba(37, 99, 235, 0.28), 0 2px 10px rgba(0, 0, 0, 0.08);
+                                        color: #ffffff;
+                                        font-weight: 700;
+                                        letter-spacing: 0.2px;
+                                        transition: transform 140ms ease, box-shadow 180ms ease, filter 180ms ease;
+                                    }
+
+                                    .realization-expense-repeater .fi-fo-repeater-add .realization-add-btn:hover {
+                                        transform: translateY(-1px);
+                                        box-shadow: 0 18px 36px rgba(37, 99, 235, 0.34), 0 3px 12px rgba(0, 0, 0, 0.10);
+                                        filter: saturate(1.08);
+                                    }
+
+                                    .realization-expense-repeater .fi-fo-repeater-add .realization-add-btn:active {
+                                        transform: translateY(0);
+                                    }
+
+                                    .realization-expense-repeater .fi-fo-repeater-add .realization-add-btn:focus-visible {
+                                        outline: 2px solid rgba(59, 130, 246, 0.55);
+                                        outline-offset: 2px;
+                                    }
                                 </style>
                             '))
                             ->columnSpanFull(),
@@ -200,6 +233,14 @@ class RealizationForm
                             ->defaultItems(0)
                             ->minItems(1)
                             ->addActionLabel('Tambah Pengeluaran')
+                            ->addAction(
+                                fn (Action $action) => $action
+                                    ->label('Tambah Pengeluaran')
+                                    ->icon('heroicon-m-plus')
+                                    ->color('info')
+                                    ->size('lg')
+                                    ->extraAttributes(['class' => 'realization-add-btn'])
+                            )
                             ->schema([
                                 Textarea::make('description')
                                     ->label('Keterangan')
@@ -310,6 +351,61 @@ class RealizationForm
                                         $set('amount', number_format($remainingAllocation, 0, ',', '.'));
                                         $set('saldo', number_format($saldo, 0, ',', '.'));
 
+                                        $items = $get('../../expenseItems') ?? [];
+                                        $items = array_values(is_array($items) ? $items : []);
+
+                                        $sourceIds = array_map(
+                                            fn ($item) => (string) ($item['expense_item_id'] ?? ''),
+                                            $items
+                                        );
+                                        $sourceIds = array_filter($sourceIds, fn ($id) => $id !== '');
+                                        $sourceCounts = array_count_values($sourceIds);
+
+                                        $seenSources = [];
+                                        $budgets = [];
+                                        $remaining = [];
+                                        $totalExpense = 0.0;
+                                        $totalRealization = 0.0;
+
+                                        foreach ($items as $index => $item) {
+                                            $sourceId = (string) ($item['expense_item_id'] ?? '');
+                                            $itemAmount = (float) self::parseMoney($item['amount'] ?? 0);
+                                            $itemRealisasi = (float) self::parseMoney($item['realisasi'] ?? 0);
+
+                                            $totalRealization += $itemRealisasi;
+
+                                            if ($sourceId !== '' && ($sourceCounts[$sourceId] ?? 0) > 1) {
+                                                if (! array_key_exists($sourceId, $budgets)) {
+                                                    $budgets[$sourceId] = $itemAmount;
+                                                    $saldoRow = $itemAmount - $itemRealisasi;
+                                                    $remaining[$sourceId] = $saldoRow;
+                                                    $items[$index]['saldo'] = number_format($saldoRow, 0, ',', '.');
+                                                } else {
+                                                    $displayAmount = max(0, (float) ($remaining[$sourceId] ?? 0));
+                                                    $items[$index]['amount'] = number_format($displayAmount, 0, ',', '.');
+                                                    $saldoRow = $displayAmount - $itemRealisasi;
+                                                    $remaining[$sourceId] = $saldoRow;
+                                                    $items[$index]['saldo'] = number_format($saldoRow, 0, ',', '.');
+                                                }
+                                            } else {
+                                                $items[$index]['saldo'] = number_format($itemAmount - $itemRealisasi, 0, ',', '.');
+                                            }
+
+                                            if ($sourceId === '') {
+                                                $totalExpense += $itemAmount;
+                                            } elseif (! in_array($sourceId, $seenSources, true)) {
+                                                $totalExpense += $itemAmount;
+                                                $seenSources[] = $sourceId;
+                                            }
+                                        }
+
+                                        $totalBalance = $totalExpense - $totalRealization;
+
+                                        $set('../../expenseItems', $items);
+                                        $set('../../total_expense', number_format($totalExpense, 0, ',', '.'));
+                                        $set('../../total_realization', number_format($totalRealization, 0, ',', '.'));
+                                        $set('../../total_balance', number_format($totalBalance, 0, ',', '.'));
+
                                         Log::info('Realization source selected', [
                                             'realization_id' => $record->id,
                                             'expense_item_id' => (int) $expenseItem->id,
@@ -344,8 +440,9 @@ class RealizationForm
                                         $sourceIds = array_filter($sourceIds, fn ($id) => $id !== '');
                                         $sourceCounts = array_count_values($sourceIds);
 
-                                        $runningAllocated = [];
-                                        $runningRealisasi = [];
+                                        $seenSources = [];
+                                        $budgets = [];
+                                        $remaining = [];
                                         $firstInsufficient = null;
 
                                         $totalExpense = 0.0;
@@ -356,32 +453,42 @@ class RealizationForm
                                             $itemAmount = (float) self::parseMoney($item['amount'] ?? 0);
                                             $itemRealisasi = (float) self::parseMoney($item['realisasi'] ?? 0);
 
-                                            $totalExpense += $itemAmount;
                                             $totalRealization += $itemRealisasi;
 
-                                            if ($sourceId !== '') {
-                                                $runningAllocated[$sourceId] = ($runningAllocated[$sourceId] ?? 0.0) + $itemAmount;
-                                                $runningRealisasi[$sourceId] = ($runningRealisasi[$sourceId] ?? 0.0) + $itemRealisasi;
-
-                                                if (($sourceCounts[$sourceId] ?? 0) > 1) {
-                                                    $saldoRow = $runningAllocated[$sourceId] - $runningRealisasi[$sourceId];
+                                            if ($sourceId !== '' && ($sourceCounts[$sourceId] ?? 0) > 1) {
+                                                if (! array_key_exists($sourceId, $budgets)) {
+                                                    $budgets[$sourceId] = $itemAmount;
+                                                    $availableBefore = $itemAmount;
+                                                    $saldoRow = $itemAmount - $itemRealisasi;
+                                                    $remaining[$sourceId] = $saldoRow;
                                                     $items[$index]['saldo'] = number_format($saldoRow, 0, ',', '.');
-
-                                                    if ($firstInsufficient === null && $saldoRow < 0) {
-                                                        $availableBefore = ($runningAllocated[$sourceId] - ($runningRealisasi[$sourceId] - $itemRealisasi));
-                                                        $firstInsufficient = [
-                                                            'index' => $index,
-                                                            'source_id' => $sourceId,
-                                                            'available' => $availableBefore,
-                                                            'realisasi' => $itemRealisasi,
-                                                        ];
-                                                    }
-
-                                                    continue;
+                                                } else {
+                                                    $displayAmount = max(0, (float) ($remaining[$sourceId] ?? 0));
+                                                    $items[$index]['amount'] = number_format($displayAmount, 0, ',', '.');
+                                                    $availableBefore = $displayAmount;
+                                                    $saldoRow = $displayAmount - $itemRealisasi;
+                                                    $remaining[$sourceId] = $saldoRow;
+                                                    $items[$index]['saldo'] = number_format($saldoRow, 0, ',', '.');
                                                 }
+
+                                                if ($firstInsufficient === null && $itemRealisasi > $availableBefore) {
+                                                    $firstInsufficient = [
+                                                        'index' => $index,
+                                                        'source_id' => $sourceId,
+                                                        'available' => $availableBefore,
+                                                        'realisasi' => $itemRealisasi,
+                                                    ];
+                                                }
+                                            } else {
+                                                $items[$index]['saldo'] = number_format($itemAmount - $itemRealisasi, 0, ',', '.');
                                             }
 
-                                            $items[$index]['saldo'] = number_format($itemAmount - $itemRealisasi, 0, ',', '.');
+                                            if ($sourceId === '') {
+                                                $totalExpense += $itemAmount;
+                                            } elseif (! in_array($sourceId, $seenSources, true)) {
+                                                $totalExpense += $itemAmount;
+                                                $seenSources[] = $sourceId;
+                                            }
                                         }
 
                                         $totalBalance = $totalExpense - $totalRealization;
@@ -437,8 +544,8 @@ class RealizationForm
                                                 return;
                                             }
 
-                                            $runningAllocated = 0.0;
                                             $runningRealisasiBefore = 0.0;
+                                            $budget = null;
 
                                             for ($i = 0; $i < $index; $i++) {
                                                 $row = $items[$i] ?? [];
@@ -447,13 +554,19 @@ class RealizationForm
                                                     continue;
                                                 }
 
-                                                $runningAllocated += (float) self::parseMoney($row['amount'] ?? 0);
                                                 $runningRealisasiBefore += (float) self::parseMoney($row['realisasi'] ?? 0);
+
+                                                if ($budget === null) {
+                                                    $budget = (float) self::parseMoney($row['amount'] ?? 0);
+                                                }
                                             }
 
-                                            $runningAllocated += (float) self::parseMoney($items[$index]['amount'] ?? 0);
+                                            if ($budget === null) {
+                                                $budget = (float) self::parseMoney($items[$index]['amount'] ?? 0);
+                                            }
+
                                             $realisasiNow = (float) self::parseMoney($value);
-                                            $availableBefore = $runningAllocated - $runningRealisasiBefore;
+                                            $availableBefore = $budget - $runningRealisasiBefore;
 
                                             if ($realisasiNow > $availableBefore) {
                                                 $fail('Saldo sumber tidak cukup. Sisa saldo sebelum baris ini Rp '.number_format($availableBefore, 0, ',', '.').', realisasi yang dimasukkan Rp '.number_format($realisasiNow, 0, ',', '.').'.');
@@ -477,8 +590,9 @@ class RealizationForm
                                         $sourceIds = array_filter($sourceIds, fn ($id) => $id !== '');
                                         $sourceCounts = array_count_values($sourceIds);
 
-                                        $runningAllocated = [];
-                                        $runningRealisasi = [];
+                                        $seenSources = [];
+                                        $budgets = [];
+                                        $remaining = [];
                                         $firstInsufficient = null;
 
                                         $totalExpense = 0.0;
@@ -489,32 +603,42 @@ class RealizationForm
                                             $itemAmount = (float) self::parseMoney($item['amount'] ?? 0);
                                             $itemRealisasi = (float) self::parseMoney($item['realisasi'] ?? 0);
 
-                                            $totalExpense += $itemAmount;
                                             $totalRealization += $itemRealisasi;
 
-                                            if ($sourceId !== '') {
-                                                $runningAllocated[$sourceId] = ($runningAllocated[$sourceId] ?? 0.0) + $itemAmount;
-                                                $runningRealisasi[$sourceId] = ($runningRealisasi[$sourceId] ?? 0.0) + $itemRealisasi;
-
-                                                if (($sourceCounts[$sourceId] ?? 0) > 1) {
-                                                    $saldoRow = $runningAllocated[$sourceId] - $runningRealisasi[$sourceId];
+                                            if ($sourceId !== '' && ($sourceCounts[$sourceId] ?? 0) > 1) {
+                                                if (! array_key_exists($sourceId, $budgets)) {
+                                                    $budgets[$sourceId] = $itemAmount;
+                                                    $availableBefore = $itemAmount;
+                                                    $saldoRow = $itemAmount - $itemRealisasi;
+                                                    $remaining[$sourceId] = $saldoRow;
                                                     $items[$index]['saldo'] = number_format($saldoRow, 0, ',', '.');
-
-                                                    if ($firstInsufficient === null && $saldoRow < 0) {
-                                                        $availableBefore = ($runningAllocated[$sourceId] - ($runningRealisasi[$sourceId] - $itemRealisasi));
-                                                        $firstInsufficient = [
-                                                            'index' => $index,
-                                                            'source_id' => $sourceId,
-                                                            'available' => $availableBefore,
-                                                            'realisasi' => $itemRealisasi,
-                                                        ];
-                                                    }
-
-                                                    continue;
+                                                } else {
+                                                    $displayAmount = max(0, (float) ($remaining[$sourceId] ?? 0));
+                                                    $items[$index]['amount'] = number_format($displayAmount, 0, ',', '.');
+                                                    $availableBefore = $displayAmount;
+                                                    $saldoRow = $displayAmount - $itemRealisasi;
+                                                    $remaining[$sourceId] = $saldoRow;
+                                                    $items[$index]['saldo'] = number_format($saldoRow, 0, ',', '.');
                                                 }
+
+                                                if ($firstInsufficient === null && $itemRealisasi > $availableBefore) {
+                                                    $firstInsufficient = [
+                                                        'index' => $index,
+                                                        'source_id' => $sourceId,
+                                                        'available' => $availableBefore,
+                                                        'realisasi' => $itemRealisasi,
+                                                    ];
+                                                }
+                                            } else {
+                                                $items[$index]['saldo'] = number_format($itemAmount - $itemRealisasi, 0, ',', '.');
                                             }
 
-                                            $items[$index]['saldo'] = number_format($itemAmount - $itemRealisasi, 0, ',', '.');
+                                            if ($sourceId === '') {
+                                                $totalExpense += $itemAmount;
+                                            } elseif (! in_array($sourceId, $seenSources, true)) {
+                                                $totalExpense += $itemAmount;
+                                                $seenSources[] = $sourceId;
+                                            }
                                         }
 
                                         $totalBalance = $totalExpense - $totalRealization;
