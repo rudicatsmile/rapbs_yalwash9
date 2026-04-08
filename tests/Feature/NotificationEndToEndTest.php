@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Events\RealizationApproved;
 use App\Filament\Resources\RealizationResource\Pages\EditRealization;
 use App\Models\Department;
+use App\Models\ExpenseItem;
 use App\Models\FinancialRecord;
 use App\Models\Realization;
 use App\Models\User;
@@ -26,10 +26,10 @@ class NotificationEndToEndTest extends TestCase
         $this->seed(\Database\Seeders\RolePermissionSeeder::class);
 
         // Ensure roles exist
-        if (!Role::where('name', 'staff')->exists()) {
+        if (! Role::where('name', 'staff')->exists()) {
             Role::create(['name' => 'staff', 'guard_name' => 'web']);
         }
-        if (!Role::where('name', 'bendahara')->exists()) {
+        if (! Role::where('name', 'bendahara')->exists()) {
             Role::create(['name' => 'bendahara', 'guard_name' => 'web']);
         }
 
@@ -63,6 +63,15 @@ class NotificationEndToEndTest extends TestCase
         // Cast to Realization model
         $realization = Realization::find($record->id);
 
+        $expenseItem = ExpenseItem::create([
+            'financial_record_id' => $realization->id,
+            'description' => 'Item 1',
+            'amount' => 100,
+            'source_type' => 'Mandiri',
+            'realisasi' => 0,
+            'saldo' => 0,
+        ]);
+
         // 3. Fake Notifications only (allow Events to fire naturally to test wiring)
         Notification::fake();
 
@@ -74,6 +83,13 @@ class NotificationEndToEndTest extends TestCase
             ->test(EditRealization::class, ['record' => $realization->id])
             ->assertOk()
             ->fillForm([
+                'expenseItems' => [
+                    [
+                        'description' => 'Item 1',
+                        'expense_item_id' => (string) $expenseItem->id,
+                        'realisasi' => '0',
+                    ],
+                ],
                 'is_approved_by_bendahara' => true,
             ])
             ->call('save')

@@ -14,12 +14,14 @@ class ExpenseItem extends Model
         'source_type',
         'realisasi',
         'saldo',
+        'is_selected_for_realization',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'realisasi' => 'decimal:2',
         'saldo' => 'decimal:2',
+        'is_selected_for_realization' => 'boolean',
     ];
 
     protected $touches = ['financialRecord'];

@@ -4,14 +4,13 @@ namespace Tests\Feature;
 
 use App\Filament\Resources\RealizationResource\Pages\EditRealization;
 use App\Models\Department;
+use App\Models\ExpenseItem;
 use App\Models\FinancialRecord;
 use App\Models\Realization;
 use App\Models\User;
-use App\Services\WhatsAppService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
-use Mockery;
 use Tests\TestCase;
 
 class RealizationWhatsAppNotificationTest extends TestCase
@@ -29,7 +28,7 @@ class RealizationWhatsAppNotificationTest extends TestCase
         $department = Department::create([
             'name' => 'IT Dept',
             'phone' => '081367155656',
-            'urut' => 1
+            'urut' => 1,
         ]);
 
         $user = User::factory()->create();
@@ -55,9 +54,25 @@ class RealizationWhatsAppNotificationTest extends TestCase
             'is_approved_by_bendahara' => false,
         ]);
 
+        $expenseItem = ExpenseItem::create([
+            'financial_record_id' => $record->id,
+            'description' => 'Item 1',
+            'amount' => 500000,
+            'source_type' => 'Mandiri',
+            'realisasi' => 0,
+            'saldo' => 0,
+        ]);
+
         Livewire::actingAs($user)
             ->test(EditRealization::class, ['record' => $record->id])
             ->fillForm([
+                'expenseItems' => [
+                    [
+                        'description' => 'Item 1',
+                        'expense_item_id' => (string) $expenseItem->id,
+                        'realisasi' => '0',
+                    ],
+                ],
                 'is_approved_by_bendahara' => true,
             ])
             ->call('save')
@@ -78,7 +93,7 @@ class RealizationWhatsAppNotificationTest extends TestCase
         $department = Department::create([
             'name' => 'IT Dept',
             'phone' => '081367155656',
-            'urut' => 1
+            'urut' => 1,
         ]);
 
         $user = User::factory()->create();
@@ -104,10 +119,26 @@ class RealizationWhatsAppNotificationTest extends TestCase
             'is_approved_by_bendahara' => false,
         ]);
 
+        $expenseItem = ExpenseItem::create([
+            'financial_record_id' => $record->id,
+            'description' => 'Item 1',
+            'amount' => 500000,
+            'source_type' => 'Mandiri',
+            'realisasi' => 0,
+            'saldo' => 0,
+        ]);
+
         Livewire::actingAs($user)
             ->test(EditRealization::class, ['record' => $record->id])
             ->fillForm([
                 'record_name' => 'Updated Name',
+                'expenseItems' => [
+                    [
+                        'description' => 'Item 1',
+                        'expense_item_id' => (string) $expenseItem->id,
+                        'realisasi' => '0',
+                    ],
+                ],
                 // is_approved_by_bendahara stays false
             ])
             ->call('save')

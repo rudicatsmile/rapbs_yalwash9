@@ -3,8 +3,8 @@
 namespace App\Filament\Resources\RealizationResource\Pages;
 
 use App\Filament\Resources\RealizationResource;
+use App\Models\ExpenseItem;
 use App\Models\User;
-use App\Services\WhatsAppService;
 use Filament\Actions;
 use Filament\Notifications\Events\DatabaseNotificationsSent;
 use Filament\Notifications\Notification;
@@ -16,6 +16,57 @@ use Illuminate\Validation\ValidationException;
 class EditRealization extends EditRecord
 {
     protected static string $resource = RealizationResource::class;
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $items = ExpenseItem::query()
+            ->where('financial_record_id', $this->record->id)
+            ->where(function ($query) {
+                $query
+                    ->where('is_selected_for_realization', true)
+                    ->orWhere('realisasi', '<>', 0)
+                    ->orWhere('saldo', '<>', 0);
+            })
+            ->orderBy('id')
+            ->get();
+
+        $data['expenseItems'] = $items
+            ->map(function (ExpenseItem $item) {
+                $amount = (float) ($item->amount ?? 0);
+                $realisasi = (float) ($item->realisasi ?? 0);
+                $saldo = $amount - $realisasi;
+
+                return [
+                    'description' => (string) $item->description,
+                    'expense_item_id' => (string) $item->id,
+                    'amount' => number_format($amount, 0, ',', '.'),
+                    'realisasi' => number_format($realisasi, 0, ',', '.'),
+                    'saldo' => number_format($saldo, 0, ',', '.'),
+                ];
+            })
+            ->values()
+            ->all();
+
+        if (! empty($data['expenseItems'])) {
+            $totalExpense = (float) ExpenseItem::query()
+                ->where('financial_record_id', $this->record->id)
+                ->sum('amount');
+
+            $totalRealization = (float) ExpenseItem::query()
+                ->where('financial_record_id', $this->record->id)
+                ->sum('realisasi');
+
+            $data['total_expense'] = $totalExpense;
+            $data['total_realization'] = $totalRealization;
+            $data['total_balance'] = $totalExpense - $totalRealization;
+        } else {
+            $data['total_expense'] = null;
+            $data['total_realization'] = null;
+            $data['total_balance'] = null;
+        }
+
+        return $data;
+    }
 
     public function mount($record): void
     {
@@ -41,18 +92,7 @@ class EditRealization extends EditRecord
             Actions\Action::make('save')
                 ->label(__('filament-panels::resources/pages/edit-record.form.actions.save.label'))
                 ->submit('save')
-                ->keyBindings(['mod+s'])
-                ->disabled(function () {
-                    $data = $this->data ?? [];
-
-                    if (!is_array($data)) {
-                        return false;
-                    }
-
-                    $balance = isset($data['total_balance']) ? (float) $data['total_balance'] : 0;
-
-                    return $balance < 0;
-                }),
+                ->keyBindings(['mod+s']),
         ];
     }
 
@@ -64,6 +104,7 @@ class EditRealization extends EditRecord
     }
 
     protected $shouldDispatchApprovalEvent = false;
+
     protected $approvalState = false;
 
     protected function beforeSave(): void
@@ -78,7 +119,7 @@ class EditRealization extends EditRecord
             'record_id' => $this->record->id,
             'old_value' => $oldValue,
             'new_value' => $newValue,
-            'is_dirty' => $newValue !== $oldValue
+            'is_dirty' => $newValue !== $oldValue,
         ]);
 
         if ($newValue !== $oldValue) {
@@ -88,39 +129,130 @@ class EditRealization extends EditRecord
 
         $items = $state['expenseItems'] ?? [];
 
-        $totalExpense = 0.0;
-        $totalRealization = 0.0;
+        $errors = [];
 
-        foreach ($items as $item) {
-            $amount = (float) ($item['amount'] ?? 0);
-            $realisasi = (float) ($item['realisasi'] ?? 0);
+        ExpenseItem::query()
+            ->where('financial_record_id', $this->record->id)
+            ->update([
+                'realisasi' => 0,
+                'saldo' => 0,
+                'is_selected_for_realization' => false,
+            ]);
 
-            if ($realisasi < 0) {
-                $realisasi = 0;
+        $expenseItemIds = collect(array_values($items))
+            ->pluck('expense_item_id')
+            ->filter(fn ($id) => filled($id))
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        $duplicateIds = collect($expenseItemIds)
+            ->countBy()
+            ->filter(fn ($count) => $count > 1)
+            ->keys()
+            ->all();
+
+        foreach (array_values($items) as $index => $item) {
+            $description = trim((string) ($item['description'] ?? ''));
+            $expenseItemId = $item['expense_item_id'] ?? null;
+            $rawRealisasi = $item['realisasi'] ?? null;
+
+            if ($description === '') {
+                $errors["data.expenseItems.{$index}.description"] = 'Keterangan wajib diisi.';
             }
 
-            $totalExpense += $amount;
-            $totalRealization += $realisasi;
+            if (! $expenseItemId) {
+                $errors["data.expenseItems.{$index}.expense_item_id"] = 'Sumber anggaran wajib dipilih.';
+            }
+
+            if ($expenseItemId && in_array((string) $expenseItemId, $duplicateIds, true)) {
+                $errors["data.expenseItems.{$index}.expense_item_id"] = 'Sumber anggaran tidak boleh duplikat.';
+            }
+
+            if ($rawRealisasi === null || $rawRealisasi === '') {
+                $errors["data.expenseItems.{$index}.realisasi"] = 'Realisasi wajib diisi.';
+            }
+
+            if ($errors) {
+                continue;
+            }
+
+            $expenseItem = $this->record->expenseItems()
+                ->whereKey($expenseItemId)
+                ->first();
+
+            if (! $expenseItem) {
+                $errors["data.expenseItems.{$index}.expense_item_id"] = 'Sumber anggaran tidak ditemukan pada RAPBS.';
+
+                continue;
+            }
+
+            $realisasi = (float) $this->parseMoney($rawRealisasi);
+
+            if ($realisasi < 0) {
+                $errors["data.expenseItems.{$index}.realisasi"] = 'Realisasi harus bernilai positif.';
+
+                continue;
+            }
+
+            if ($realisasi > 2000000000) {
+                $errors["data.expenseItems.{$index}.realisasi"] = 'Realisasi maksimal 2.000.000.000.';
+
+                continue;
+            }
+
+            if (floor($realisasi) !== $realisasi) {
+                $errors["data.expenseItems.{$index}.realisasi"] = 'Realisasi harus berupa angka bulat.';
+
+                continue;
+            }
+
+            $expenseItem->description = $description;
+            $expenseItem->realisasi = $realisasi;
+            $expenseItem->saldo = (float) $expenseItem->amount - $realisasi;
+            $expenseItem->is_selected_for_realization = true;
+            $expenseItem->save();
+
+            Log::info('Realization expense item updated', [
+                'realization_id' => $this->record->id,
+                'expense_item_id' => (int) $expenseItem->id,
+                'user_id' => auth()->id(),
+                'realisasi' => $realisasi,
+            ]);
         }
 
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $this->record->refresh();
+
+        $totalExpense = (float) $this->record->expenseItems()->sum('amount');
+        $totalRealization = (float) $this->record->expenseItems()->sum('realisasi');
         $totalBalance = $totalExpense - $totalRealization;
 
         $this->data['total_expense'] = $totalExpense;
         $this->data['total_realization'] = $totalRealization;
         $this->data['total_balance'] = $totalBalance;
+    }
 
-        if ($totalBalance < 0) {
-            throw ValidationException::withMessages([
-                'data.total_balance' => 'Saldo akhir tidak boleh negatif.',
-            ]);
+    protected function parseMoney($value): float
+    {
+        if (empty($value)) {
+            return 0;
         }
+
+        $cleanValue = str_replace('.', '', (string) $value);
+        $cleanValue = str_replace(',', '.', $cleanValue);
+        $cleanValue = preg_replace('/[^0-9.\-]/', '', $cleanValue);
+
+        return (float) $cleanValue;
     }
 
     protected function afterSave(): void
     {
         Log::info('EditRealization: afterSave called', [
             'should_dispatch' => $this->shouldDispatchApprovalEvent,
-            'approval_state' => $this->approvalState
+            'approval_state' => $this->approvalState,
         ]);
 
         if ($this->shouldDispatchApprovalEvent) {
@@ -154,13 +286,13 @@ class EditRealization extends EditRecord
 
     public function updatedDataStatusRealisasi($value): void
     {
-        if (!$this->record) {
+        if (! $this->record) {
             return;
         }
 
         $user = Auth::user();
 
-        if (!$user || !$user->can('update', $this->record)) {
+        if (! $user || ! $user->can('update', $this->record)) {
             $this->data['status_realisasi'] = (bool) $this->record->status_realisasi;
 
             Notification::make()
@@ -225,9 +357,9 @@ class EditRealization extends EditRecord
                 $monthName = $monthNames[$monthNumber] ?? '-';
 
                 $body = "Realisasi #{$realizationId} siap untuk pelaporan.\n"
-                    . "Departemen: {$departmentName}\n"
-                    . "Nama History: {$recordName}\n"
-                    . "Bulan: {$monthName}";
+                    ."Departemen: {$departmentName}\n"
+                    ."Nama History: {$recordName}\n"
+                    ."Bulan: {$monthName}";
 
                 $databaseNotification = Notification::make()
                     ->title('Realisasi siap pelaporan')

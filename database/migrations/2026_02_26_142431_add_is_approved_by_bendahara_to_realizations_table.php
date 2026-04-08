@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('financial_records', function (Blueprint $table) {
-            $table->boolean('is_approved_by_bendahara')->default(false)->after('status_realisasi');
-        });
+        if (! Schema::hasColumn('financial_records', 'is_approved_by_bendahara')) {
+            Schema::table('financial_records', function (Blueprint $table) {
+                $table->boolean('is_approved_by_bendahara')->default(false)->after('status_realisasi');
+            });
+        }
     }
 
     /**

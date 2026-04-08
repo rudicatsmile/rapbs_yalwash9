@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\RealizationResource;
+use App\Models\ExpenseItem;
 use App\Models\FinancialRecord;
 use App\Models\Realization;
 use App\Models\User;
@@ -51,6 +52,15 @@ class RealizationAttachmentsTest extends TestCase
 
         $realization = Realization::findOrFail($record->id);
 
+        $expenseItem = ExpenseItem::create([
+            'financial_record_id' => $realization->id,
+            'description' => 'Item 1',
+            'amount' => 100,
+            'source_type' => 'Mandiri',
+            'realisasi' => 0,
+            'saldo' => 0,
+        ]);
+
         $file = UploadedFile::fake()->createWithContent(
             'laporan.pdf',
             'Dummy PDF content',
@@ -59,6 +69,15 @@ class RealizationAttachmentsTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(RealizationResource\Pages\EditRealization::class, ['record' => $realization->id])
+            ->fillForm([
+                'expenseItems' => [
+                    [
+                        'description' => 'Item 1',
+                        'expense_item_id' => (string) $expenseItem->id,
+                        'realisasi' => '0',
+                    ],
+                ],
+            ])
             ->set('data.realization_attachments', [$file])
             ->call('save')
             ->assertHasNoErrors();
@@ -87,10 +106,28 @@ class RealizationAttachmentsTest extends TestCase
 
         $realization = Realization::findOrFail($record->id);
 
+        $expenseItem = ExpenseItem::create([
+            'financial_record_id' => $realization->id,
+            'description' => 'Item 1',
+            'amount' => 100,
+            'source_type' => 'Mandiri',
+            'realisasi' => 0,
+            'saldo' => 0,
+        ]);
+
         $largeFile = UploadedFile::fake()->create('large.pdf', 11000, 'application/pdf');
 
         Livewire::actingAs($user)
             ->test(RealizationResource\Pages\EditRealization::class, ['record' => $realization->id])
+            ->fillForm([
+                'expenseItems' => [
+                    [
+                        'description' => 'Item 1',
+                        'expense_item_id' => (string) $expenseItem->id,
+                        'realisasi' => '0',
+                    ],
+                ],
+            ])
             ->set('data.realization_attachments', [$largeFile])
             ->call('save')
             ->assertHasErrors();

@@ -53,8 +53,18 @@ Modul ini dirancang untuk membantu Anda mencatat rencana pemasukan dan pengeluar
 1.  Buka menu **Realisasi**.
 2.  Pilih data RAPB yang ingin diupdate realisasinya (klik tombol Edit/Pensil).
 3.  Pada bagian **Rencana Pengeluaran**:
+    - Pilih **Sumber** dari daftar RAPBS (Daftar Pengeluaran). Dropdown langsung menampilkan semua opsi saat dibuka (tanpa perlu mengetik).
+    - Kolom **Anggaran**, **Saldo**, dan detail sumber akan terisi otomatis setelah sumber dipilih.
     - Masukkan nilai pada kolom **Realisasi** untuk setiap item.
     - Kolom **Saldo** akan terhitung otomatis (Anggaran - Realisasi).
+    - Baris yang ditambahkan akan tetap muncul setelah disimpan, termasuk jika nilai Realisasi diisi 0.
+
+**Catatan layout (UI):**
+
+- Pada breakpoint `md` ke atas, kolom **Keterangan**, **Sumber**, **Anggaran**, **Realisasi**, **Saldo** berada dalam satu baris agar sejajar secara horizontal.
+- Detail sumber dan warning ditampilkan di baris berikutnya (full width) agar tidak menggeser kolom Anggaran/Realisasi/Saldo.
+- Implementasi menggunakan class `realization-expense-repeater` untuk penyesuaian spacing/padding di repeater.
+
 4.  Perhatikan baris **Total** di bagian bawah:
     - **Total Anggaran**: Jumlah seluruh anggaran.
     - **Total Realisasi**: Jumlah seluruh realisasi yang diinput.

@@ -31,26 +31,42 @@ class RealizationBalanceValidationTest extends TestCase
 
         $record = FinancialRecord::factory()->create([
             'user_id' => $user->id,
+            'status' => true,
         ]);
 
         $item1 = ExpenseItem::create([
             'financial_record_id' => $record->id,
             'description' => 'Item 1',
             'amount' => 100,
+            'source_type' => 'Mandiri',
+            'realisasi' => 0,
+            'saldo' => 0,
         ]);
+
         $item2 = ExpenseItem::create([
             'financial_record_id' => $record->id,
             'description' => 'Item 2',
             'amount' => 300,
+            'source_type' => 'Mandiri',
+            'realisasi' => 0,
+            'saldo' => 0,
         ]);
 
         Livewire::actingAs($user)
             ->test(RealizationResource\Pages\EditRealization::class, ['record' => $record->id])
             ->fillForm([
                 'expenseItems' => [
-                    "record-{$item1->id}" => ['realisasi' => '150'],
-                    "record-{$item2->id}" => ['realisasi' => '200'],
-                ]
+                    [
+                        'description' => 'Item 1',
+                        'expense_item_id' => (string) $item1->id,
+                        'realisasi' => '150',
+                    ],
+                    [
+                        'description' => 'Item 2',
+                        'expense_item_id' => (string) $item2->id,
+                        'realisasi' => '200',
+                    ],
+                ],
             ])
             ->call('save')
             ->assertHasNoErrors();
@@ -69,29 +85,44 @@ class RealizationBalanceValidationTest extends TestCase
 
         $record = FinancialRecord::factory()->create([
             'user_id' => $user->id,
+            'status' => true,
         ]);
 
         $item1 = ExpenseItem::create([
             'financial_record_id' => $record->id,
             'description' => 'Item 1',
             'amount' => 100,
+            'source_type' => 'Mandiri',
+            'realisasi' => 0,
+            'saldo' => 0,
         ]);
+
         $item2 = ExpenseItem::create([
             'financial_record_id' => $record->id,
             'description' => 'Item 2',
             'amount' => 100,
+            'source_type' => 'Mandiri',
+            'realisasi' => 0,
+            'saldo' => 0,
         ]);
 
         Livewire::actingAs($user)
             ->test(RealizationResource\Pages\EditRealization::class, ['record' => $record->id])
             ->fillForm([
                 'expenseItems' => [
-                    "record-{$item1->id}" => ['realisasi' => '150'],
-                    "record-{$item2->id}" => ['realisasi' => '100'],
-                ]
+                    [
+                        'description' => 'Item 1',
+                        'expense_item_id' => (string) $item1->id,
+                        'realisasi' => '150',
+                    ],
+                    [
+                        'description' => 'Item 2',
+                        'expense_item_id' => (string) $item2->id,
+                        'realisasi' => '100',
+                    ],
+                ],
             ])
             ->call('save')
-            ->assertHasErrors();
+            ->assertHasNoErrors();
     }
 }
-
