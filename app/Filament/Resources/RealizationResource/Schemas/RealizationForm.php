@@ -290,7 +290,12 @@ class RealizationForm
                                     ->required()
                                     ->formatStateUsing(fn ($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
                                     ->rule(['integer', 'min:0', 'max:2000000000'])
-                                    ->live()
+                                    ->hint(function (TextInput $component) {
+                                        $target = $component->getStatePath();
+
+                                        return new HtmlString('<span wire:loading wire:target="'.e($target).'" style="font-size:12px;opacity:.75;">Menghitung...</span>');
+                                    })
+                                    ->live(onBlur: true)
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                         $realisasi = (float) self::parseMoney($state);
                                         $amount = (float) self::parseMoney($get('amount'));
