@@ -127,7 +127,7 @@
                         <td>{{ $index + 1 }}</td>
                         <td>{{ $item->description }}</td>
                         <td class="text-right">Rp {{ number_format($item->amount, 0, ',', '.') }}</td>
-                        <td class="text-right">Rp {{ number_format($aggRealisasi, 0, ',', '.') }}</td>
+                        <td class="text-right"><strong>Rp {{ number_format($aggRealisasi, 0, ',', '.') }}</strong></td>
                         <td class="text-right">Rp {{ number_format($saldo, 0, ',', '.') }}</td>
                     </tr>
                     @if($itemLines->count() > 0)
