@@ -79,6 +79,13 @@ class FinancialRecordsTable
                             $html .= '</div>';
                         }
 
+                        if (($record->income_bos_other ?? 0) > 0) {
+                            $html .= '<div class="flex items-center gap-1">';
+                            $html .= '<span class="px-1.5 py-0.5 rounded bg-warning-50 text-warning-700 border border-warning-200">Lainnya : </span>';
+                            $html .= '<span>' . $formatMoney($record->income_bos_other) . '</span>';
+                            $html .= '</div>';
+                        }
+
                         $html .= '</div>'; // End Details
                         $html .= '</div>'; // End Container
 
@@ -89,7 +96,7 @@ class FinancialRecordsTable
                         Summarizer::make()
                             ->label('Total')
                             ->using(function ($query) {
-                                return $query->selectRaw('sum(income_total) as total, sum(income_fixed) as fixed, sum(income_bos) as bos')->first();
+                                return $query->selectRaw('sum(income_total) as total, sum(income_fixed) as fixed, sum(income_bos) as bos, sum(income_bos_other) as other')->first();
                             })
                             ->formatStateUsing(function ($state) {
                                 $formatMoney = fn($amount) => 'Rp ' . number_format($amount, 0, ',', '.');
@@ -103,6 +110,9 @@ class FinancialRecordsTable
                                     }
                                     if ($state->bos > 0) {
                                         $html .= '<div class="flex items-center gap-1"><span class="px-1.5 py-0.5 rounded bg-success-50 text-success-700 border border-success-200">BOS : </span><span>' . $formatMoney($state->bos) . '</span></div>';
+                                    }
+                                    if (($state->other ?? 0) > 0) {
+                                        $html .= '<div class="flex items-center gap-1"><span class="px-1.5 py-0.5 rounded bg-warning-50 text-warning-700 border border-warning-200">Lainnya : </span><span>' . $formatMoney($state->other) . '</span></div>';
                                     }
                                     $html .= '</div>';
                                 }
