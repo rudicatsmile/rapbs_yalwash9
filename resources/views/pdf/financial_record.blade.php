@@ -44,13 +44,13 @@
     @endphp
     <div class="header">
         <h2>YAYASAN AL-WATHONIYAH 9</h2>
-        <h3>LAPORAN TRANSAKSI KEUANGAN</h3>
+        <h3>LAPORAN REALISASI ANGGARAN PENDAPATAN BELANJA SEKOLAH</h3>
     </div>
 
     <div class="section">
         <table style="width: 100%; border: none;">
             <tr>
-                <td style="border: none; width: 150px;"><strong>Nama Record</strong></td>
+                <td style="border: none; width: 150px;"><strong>Nama Kegiatan</strong></td>
                 <td style="border: none;">: {{ $record->record_name }}</td>
             </tr>
             <tr>
@@ -82,7 +82,7 @@
                 <th class="text-right">Jumlah</th>
             </tr>
             <tr>
-                <td>Fixed Income</td>
+                <td>Mandiri</td>
                 <td class="text-right">Rp {{ number_format($record->income_fixed, 0, ',', '.') }}</td>
             </tr>
             <tr>
