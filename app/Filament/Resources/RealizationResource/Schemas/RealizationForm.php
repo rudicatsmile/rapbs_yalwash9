@@ -52,8 +52,8 @@ class RealizationForm
                             ->prefix('Rp')
                             ->disabled()
                             ->dehydrated()
-                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
-                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                             ->columnSpanFull(),
                         TextInput::make('income_percentage')
                             ->label('Resiko tidak dibayar')
@@ -66,8 +66,8 @@ class RealizationForm
                             ->prefix('Rp')
                             ->disabled()
                             ->dehydrated()
-                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
-                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                             ->columnSpanFull(),
                     ])->columns(1),
 
@@ -78,16 +78,16 @@ class RealizationForm
                             ->prefix('Rp')
                             ->disabled()
                             ->dehydrated()
-                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
-                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                             ->columns(1),
                         TextInput::make('income_bos_other')
                             ->label('Pemasukan lainnya (Rp)')
                             ->prefix('Rp')
                             ->disabled()
                             ->dehydrated()
-                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
-                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                             ->columns(1),
                     ])->columns(2),
 
@@ -98,8 +98,8 @@ class RealizationForm
                             ->prefix('Rp')
                             ->disabled()
                             ->dehydrated()
-                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
-                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                             ->columnSpanFull(),
                     ])->columns(1),
 
@@ -109,7 +109,7 @@ class RealizationForm
                         Placeholder::make('rapbs_items_empty_warning')
                             ->hiddenLabel()
                             ->content(function ($record) {
-                                if (! $record || ! $record->exists) {
+                                if (!$record || !$record->exists) {
                                     return new HtmlString('');
                                 }
 
@@ -176,7 +176,7 @@ class RealizationForm
                         Placeholder::make('realization_expense_draft_persist')
                             ->hiddenLabel()
                             ->content(function ($record) {
-                                if (! $record || ! $record->exists) {
+                                if (!$record || !$record->exists) {
                                     return new HtmlString('');
                                 }
 
@@ -185,7 +185,7 @@ class RealizationForm
                                 return new HtmlString('
                                     <script>
                                         (function () {
-                                            const recordId = '.$recordId.';
+                                            const recordId = ' . $recordId . ';
                                             const key = "realization:expenseItems:draft:" + recordId;
 
                                             function findComponent() {
@@ -242,7 +242,7 @@ class RealizationForm
                             ->minItems(1)
                             ->addActionLabel('Tambah Pengeluaran')
                             ->addAction(
-                                fn (Action $action) => $action
+                                fn(Action $action) => $action
                                     ->label('Tambah Pengeluaran')
                                     ->icon('heroicon-m-plus')
                                     ->color('info')
@@ -261,7 +261,7 @@ class RealizationForm
                                         'md' => 3,
                                     ]),
                                 Select::make('expense_item_id')
-                                    ->label('Sumber')
+                                    ->label('Sumber Anggaran')
                                     ->required()
                                     ->placeholder('– Pilih Sumber Anggaran –')
                                     ->preload()
@@ -271,11 +271,11 @@ class RealizationForm
                                         return ExpenseItem::query()
                                             ->where('financial_record_id', $record->id)
                                             ->pluck('id')
-                                            ->map(fn ($id) => (string) $id)
+                                            ->map(fn($id) => (string) $id)
                                             ->all();
                                     })
                                     ->getOptionLabelUsing(function ($value, $livewire): ?string {
-                                        if (! $value) {
+                                        if (!$value) {
                                             return null;
                                         }
 
@@ -285,7 +285,7 @@ class RealizationForm
                                             ->whereKey($value)
                                             ->first();
 
-                                        if (! $item) {
+                                        if (!$item) {
                                             return null;
                                         }
 
@@ -293,7 +293,7 @@ class RealizationForm
                                         $realisasi = (float) ($item->realisasi ?? 0);
                                         $available = $amount - $realisasi;
 
-                                        return "{$item->description} • Anggaran: ".number_format($amount, 0, ',', '.').' • Tersedia: '.number_format($available, 0, ',', '.');
+                                        return "{$item->description} • Anggaran: " . number_format($amount, 0, ',', '.') . ' • Tersedia: ' . number_format($available, 0, ',', '.');
                                     })
                                     ->options(function ($livewire): array {
                                         $record = $livewire->getRecord();
@@ -307,7 +307,7 @@ class RealizationForm
                                                 $realisasi = (float) ($item->realisasi ?? 0);
                                                 $available = $amount - $realisasi;
 
-                                                $label = "{$item->description} • Anggaran: ".number_format($amount, 0, ',', '.').' • Tersedia: '.number_format($available, 0, ',', '.');
+                                                $label = "{$item->description} • Anggaran: " . number_format($amount, 0, ',', '.') . ' • Tersedia: ' . number_format($available, 0, ',', '.');
 
                                                 return [
                                                     (string) $item->id => $label,
@@ -319,7 +319,7 @@ class RealizationForm
                                     ->afterStateUpdated(function (Get $get, Set $set, $state, $livewire): void {
                                         $record = $livewire->getRecord();
 
-                                        if (! $state) {
+                                        if (!$state) {
                                             $set('amount', null);
                                             $set('saldo', null);
 
@@ -331,7 +331,7 @@ class RealizationForm
                                             ->whereKey($state)
                                             ->first();
 
-                                        if (! $expenseItem) {
+                                        if (!$expenseItem) {
                                             Notification::make()
                                                 ->title('Sumber tidak valid')
                                                 ->body('Sumber anggaran tidak ditemukan pada RAPBS.')
@@ -352,7 +352,7 @@ class RealizationForm
                                         $realisasi = (float) self::parseMoney($get('realisasi'));
                                         $saldo = $remainingAllocation - $realisasi;
 
-                                        if (! $get('description')) {
+                                        if (!$get('description')) {
                                             $set('description', (string) ($expenseItem->description ?? ''));
                                         }
 
@@ -363,10 +363,10 @@ class RealizationForm
                                         $items = array_values(is_array($items) ? $items : []);
 
                                         $sourceIds = array_map(
-                                            fn ($item) => (string) ($item['expense_item_id'] ?? ''),
+                                            fn($item) => (string) ($item['expense_item_id'] ?? ''),
                                             $items
                                         );
-                                        $sourceIds = array_filter($sourceIds, fn ($id) => $id !== '');
+                                        $sourceIds = array_filter($sourceIds, fn($id) => $id !== '');
                                         $sourceCounts = array_count_values($sourceIds);
 
                                         $seenSources = [];
@@ -383,7 +383,7 @@ class RealizationForm
                                             $totalRealization += $itemRealisasi;
 
                                             if ($sourceId !== '' && ($sourceCounts[$sourceId] ?? 0) > 1) {
-                                                if (! array_key_exists($sourceId, $budgets)) {
+                                                if (!array_key_exists($sourceId, $budgets)) {
                                                     $budgets[$sourceId] = $itemAmount;
                                                     $saldoRow = $itemAmount - $itemRealisasi;
                                                     $remaining[$sourceId] = $saldoRow;
@@ -401,7 +401,7 @@ class RealizationForm
 
                                             if ($sourceId === '') {
                                                 $totalExpense += $itemAmount;
-                                            } elseif (! in_array($sourceId, $seenSources, true)) {
+                                            } elseif (!in_array($sourceId, $seenSources, true)) {
                                                 $totalExpense += $itemAmount;
                                                 $seenSources[] = $sourceId;
                                             }
@@ -430,12 +430,12 @@ class RealizationForm
                                     ->dehydrated()
                                     ->stripCharacters('.')
                                     ->required()
-                                    ->formatStateUsing(fn ($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
+                                    ->formatStateUsing(fn($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
                                     ->rule(['integer', 'min:0', 'max:2000000000'])
                                     ->hint(function (TextInput $component) {
                                         $target = $component->getStatePath();
 
-                                        return new HtmlString('<span wire:loading wire:target="'.e($target).'" style="font-size:12px;opacity:.75;">Menghitung...</span>');
+                                        return new HtmlString('<span wire:loading wire:target="' . e($target) . '" style="font-size:12px;opacity:.75;">Menghitung...</span>');
                                     })
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
@@ -443,10 +443,10 @@ class RealizationForm
                                         $items = array_values(is_array($items) ? $items : []);
 
                                         $sourceIds = array_map(
-                                            fn ($item) => (string) ($item['expense_item_id'] ?? ''),
+                                            fn($item) => (string) ($item['expense_item_id'] ?? ''),
                                             $items
                                         );
-                                        $sourceIds = array_filter($sourceIds, fn ($id) => $id !== '');
+                                        $sourceIds = array_filter($sourceIds, fn($id) => $id !== '');
                                         $sourceCounts = array_count_values($sourceIds);
 
                                         $seenSources = [];
@@ -465,7 +465,7 @@ class RealizationForm
                                             $totalRealization += $itemRealisasi;
 
                                             if ($sourceId !== '' && ($sourceCounts[$sourceId] ?? 0) > 1) {
-                                                if (! array_key_exists($sourceId, $budgets)) {
+                                                if (!array_key_exists($sourceId, $budgets)) {
                                                     $budgets[$sourceId] = $itemAmount;
                                                     $availableBefore = $itemAmount;
                                                     $saldoRow = $itemAmount - $itemRealisasi;
@@ -494,7 +494,7 @@ class RealizationForm
 
                                             if ($sourceId === '') {
                                                 $totalExpense += $itemAmount;
-                                            } elseif (! in_array($sourceId, $seenSources, true)) {
+                                            } elseif (!in_array($sourceId, $seenSources, true)) {
                                                 $totalExpense += $itemAmount;
                                                 $seenSources[] = $sourceId;
                                             }
@@ -510,12 +510,12 @@ class RealizationForm
                                         if ($firstInsufficient !== null) {
                                             Notification::make()
                                                 ->title('Saldo sumber tidak cukup')
-                                                ->body('Terdeteksi duplikasi sumber. Sisa saldo sebelum baris ke-'.($firstInsufficient['index'] + 1).' adalah Rp '.number_format((float) $firstInsufficient['available'], 0, ',', '.').', namun realisasi pada baris tersebut Rp '.number_format((float) $firstInsufficient['realisasi'], 0, ',', '.').'.')
+                                                ->body('Terdeteksi duplikasi sumber. Sisa saldo sebelum baris ke-' . ($firstInsufficient['index'] + 1) . ' adalah Rp ' . number_format((float) $firstInsufficient['available'], 0, ',', '.') . ', namun realisasi pada baris tersebut Rp ' . number_format((float) $firstInsufficient['realisasi'], 0, ',', '.') . '.')
                                                 ->warning()
                                                 ->send();
                                         }
                                     })
-                                    ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                                    ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                                     ->extraInputAttributes([
                                         'inputmode' => 'numeric',
                                         'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
@@ -528,11 +528,11 @@ class RealizationForm
                                     ->label('Realisasi')
                                     ->stripCharacters('.')
                                     ->required()
-                                    ->formatStateUsing(fn ($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
+                                    ->formatStateUsing(fn($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
                                     ->rule(['integer', 'min:0', 'max:2000000000'])
                                     ->rule(function (Get $get) {
                                         return function (string $attribute, $value, \Closure $fail) use ($get): void {
-                                            if (! preg_match('/expenseItems\.(\d+)\.realisasi$/', $attribute, $matches)) {
+                                            if (!preg_match('/expenseItems\.(\d+)\.realisasi$/', $attribute, $matches)) {
                                                 return;
                                             }
 
@@ -541,10 +541,10 @@ class RealizationForm
                                             $items = array_values(is_array($items) ? $items : []);
 
                                             $sourceIds = array_map(
-                                                fn ($item) => (string) ($item['expense_item_id'] ?? ''),
+                                                fn($item) => (string) ($item['expense_item_id'] ?? ''),
                                                 $items
                                             );
-                                            $sourceIds = array_filter($sourceIds, fn ($id) => $id !== '');
+                                            $sourceIds = array_filter($sourceIds, fn($id) => $id !== '');
                                             $sourceCounts = array_count_values($sourceIds);
 
                                             $sourceId = (string) ($items[$index]['expense_item_id'] ?? '');
@@ -578,14 +578,14 @@ class RealizationForm
                                             $availableBefore = $budget - $runningRealisasiBefore;
 
                                             if ($realisasiNow > $availableBefore) {
-                                                $fail('Saldo sumber tidak cukup. Sisa saldo sebelum baris ini Rp '.number_format($availableBefore, 0, ',', '.').', realisasi yang dimasukkan Rp '.number_format($realisasiNow, 0, ',', '.').'.');
+                                                $fail('Saldo sumber tidak cukup. Sisa saldo sebelum baris ini Rp ' . number_format($availableBefore, 0, ',', '.') . ', realisasi yang dimasukkan Rp ' . number_format($realisasiNow, 0, ',', '.') . '.');
                                             }
                                         };
                                     })
                                     ->hint(function (TextInput $component) {
                                         $target = $component->getStatePath();
 
-                                        return new HtmlString('<span wire:loading wire:target="'.e($target).'" style="font-size:12px;opacity:.75;">Menghitung...</span>');
+                                        return new HtmlString('<span wire:loading wire:target="' . e($target) . '" style="font-size:12px;opacity:.75;">Menghitung...</span>');
                                     })
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
@@ -593,10 +593,10 @@ class RealizationForm
                                         $items = array_values(is_array($items) ? $items : []);
 
                                         $sourceIds = array_map(
-                                            fn ($item) => (string) ($item['expense_item_id'] ?? ''),
+                                            fn($item) => (string) ($item['expense_item_id'] ?? ''),
                                             $items
                                         );
-                                        $sourceIds = array_filter($sourceIds, fn ($id) => $id !== '');
+                                        $sourceIds = array_filter($sourceIds, fn($id) => $id !== '');
                                         $sourceCounts = array_count_values($sourceIds);
 
                                         $seenSources = [];
@@ -615,7 +615,7 @@ class RealizationForm
                                             $totalRealization += $itemRealisasi;
 
                                             if ($sourceId !== '' && ($sourceCounts[$sourceId] ?? 0) > 1) {
-                                                if (! array_key_exists($sourceId, $budgets)) {
+                                                if (!array_key_exists($sourceId, $budgets)) {
                                                     $budgets[$sourceId] = $itemAmount;
                                                     $availableBefore = $itemAmount;
                                                     $saldoRow = $itemAmount - $itemRealisasi;
@@ -644,7 +644,7 @@ class RealizationForm
 
                                             if ($sourceId === '') {
                                                 $totalExpense += $itemAmount;
-                                            } elseif (! in_array($sourceId, $seenSources, true)) {
+                                            } elseif (!in_array($sourceId, $seenSources, true)) {
                                                 $totalExpense += $itemAmount;
                                                 $seenSources[] = $sourceId;
                                             }
@@ -660,12 +660,12 @@ class RealizationForm
                                         if ($firstInsufficient !== null) {
                                             Notification::make()
                                                 ->title('Saldo sumber tidak cukup')
-                                                ->body('Terdeteksi duplikasi sumber. Sisa saldo sebelum baris ke-'.($firstInsufficient['index'] + 1).' adalah Rp '.number_format((float) $firstInsufficient['available'], 0, ',', '.').', namun realisasi pada baris tersebut Rp '.number_format((float) $firstInsufficient['realisasi'], 0, ',', '.').'.')
+                                                ->body('Terdeteksi duplikasi sumber. Sisa saldo sebelum baris ke-' . ($firstInsufficient['index'] + 1) . ' adalah Rp ' . number_format((float) $firstInsufficient['available'], 0, ',', '.') . ', namun realisasi pada baris tersebut Rp ' . number_format((float) $firstInsufficient['realisasi'], 0, ',', '.') . '.')
                                                 ->warning()
                                                 ->send();
                                         }
                                     })
-                                    ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                                    ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                                     ->extraInputAttributes([
                                         'inputmode' => 'numeric',
                                         'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
@@ -678,8 +678,8 @@ class RealizationForm
                                     ->label('Saldo')
                                     ->readOnly()
                                     ->dehydrated() // Must be saved
-                                    ->formatStateUsing(fn ($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
-                                    ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                                    ->formatStateUsing(fn($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
+                                    ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                                     ->columnSpan([
                                         'default' => 12,
                                         'md' => 3,
@@ -689,13 +689,13 @@ class RealizationForm
                                     ->content(function (Get $get) {
                                         $id = $get('expense_item_id');
 
-                                        if (! $id) {
+                                        if (!$id) {
                                             return new HtmlString('');
                                         }
 
                                         $item = ExpenseItem::query()->find($id);
 
-                                        if (! $item) {
+                                        if (!$item) {
                                             return new HtmlString('<div style="color:#dc2626;font-size:12px;margin-top:6px;">Detail sumber tidak ditemukan.</div>');
                                         }
 
@@ -704,9 +704,9 @@ class RealizationForm
                                         $available = $amount - $realisasi;
 
                                         $html = '<div style="font-size:12px;opacity:.85;margin-top:6px;">';
-                                        $html .= '<div><strong>Nama Akun</strong>: '.e((string) $item->description).'</div>';
-                                        $html .= '<div><strong>Anggaran</strong>: '.e(number_format($amount, 0, ',', '.')).'</div>';
-                                        $html .= '<div><strong>Tersedia</strong>: '.e(number_format($available, 0, ',', '.')).'</div>';
+                                        $html .= '<div><strong>Nama Akun</strong>: ' . e((string) $item->description) . '</div>';
+                                        $html .= '<div><strong>Anggaran</strong>: ' . e(number_format($amount, 0, ',', '.')) . '</div>';
+                                        $html .= '<div><strong>Tersedia</strong>: ' . e(number_format($available, 0, ',', '.')) . '</div>';
                                         $html .= '</div>';
 
                                         return new HtmlString($html);
@@ -741,8 +741,8 @@ class RealizationForm
                                     ->prefix('Rp')
                                     ->disabled()
                                     ->dehydrated()
-                                    ->formatStateUsing(fn ($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
-                                    ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                                    ->formatStateUsing(fn($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
+                                    ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                                     ->extraInputAttributes([
                                         'style' => 'font-weight: bold',
                                         'title' => 'Total penjumlahan dari seluruh anggaran item pengeluaran',
@@ -752,8 +752,8 @@ class RealizationForm
                                     ->prefix('Rp')
                                     ->disabled()
                                     ->dehydrated()
-                                    ->formatStateUsing(fn ($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
-                                    ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                                    ->formatStateUsing(fn($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
+                                    ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                                     ->extraInputAttributes([
                                         'style' => 'font-weight: bold',
                                         'title' => 'Total akumulasi dari realisasi yang telah diinput',
@@ -763,8 +763,8 @@ class RealizationForm
                                     ->prefix('Rp')
                                     ->readOnly()
                                     ->dehydrated()
-                                    ->formatStateUsing(fn ($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
-                                    ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
+                                    ->formatStateUsing(fn($state) => blank($state) ? '' : number_format((float) self::parseMoney($state), 0, ',', '.'))
+                                    ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
                                     ->extraInputAttributes([
                                         'style' => 'font-weight: bold',
                                         'title' => 'Selisih antara Total Anggaran dikurangi Total Realisasi',
@@ -774,7 +774,7 @@ class RealizationForm
 
                 Section::make('Persetujuan Bendahara')
                     ->columnSpanFull()
-                    ->visible(fn ($record) => $record && $record->exists)
+                    ->visible(fn($record) => $record && $record->exists)
                     ->schema([
                         Toggle::make('is_approved_by_bendahara')
                             ->label('Disetujui oleh Bendahara')
@@ -783,14 +783,14 @@ class RealizationForm
                             ->onIcon('heroicon-m-check-badge')
                             ->offIcon('heroicon-m-x-circle')
                             ->inline(false)
-                            ->disabled(fn () => ! auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor', 'bendahara']))
+                            ->disabled(fn() => !auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor', 'bendahara']))
                             ->dehydrated()
                             ->helperText('Aktifkan untuk menyetujui realisasi ini. Hanya Bendahara, Admin, dan Editor yang dapat mengubah status ini.'),
                     ]),
 
                 Section::make('Lampiran Realisasi')
                     ->columnSpanFull()
-                    ->visible(fn ($record) => $record && $record->exists)
+                    ->visible(fn($record) => $record && $record->exists)
                     ->schema([
                         Toggle::make('status_realisasi')
                             ->label('Status Siap Pelaporan')

@@ -357,7 +357,7 @@ class FinancialRecordsTable
                 Action::make('download_excel')
                     ->label('Download Excel')
                     ->icon('heroicon-o-arrow-down-tray')
-                    ->tooltip('Download Record Details')
+                    ->tooltip('Download Excel')
                     ->action(function (FinancialRecord $record) {
                         return response()->streamDownload(function () use ($record) {
                             $writer = new \OpenSpout\Writer\XLSX\Writer();
