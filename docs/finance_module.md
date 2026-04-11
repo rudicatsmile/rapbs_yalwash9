@@ -47,6 +47,7 @@ Modul ini dirancang untuk membantu Anda mencatat rencana pemasukan dan pengeluar
 
 - **Edit**: Klik ikon pensil pada baris data yang ingin diubah.
 - **Hapus**: Centang data dan pilih delete, atau gunakan tombol delete pada baris data.
+- **Duplicate**: Klik ikon duplicate pada baris data untuk membuat salinan RAPBS (menyalin item pengeluaran, alokasi anggaran, dan detail realisasi jika ada).
 
 ### 3. Mencatat Realisasi
 
@@ -79,7 +80,7 @@ Modul ini dirancang untuk membantu Anda mencatat rencana pemasukan dan pengeluar
 
 Sistem ini menerapkan penguncian data untuk menjaga integritas laporan keuangan:
 
-- **Status Kunci**: Ketika `status_realisasi` diset ke `1` (Final/Locked).
+- **Status Kunci**: Ketika `is_approved_by_bendahara` diset ke `1` (Final/Locked).
 - **Pembatasan**: User dengan role `User` **TIDAK DAPAT** mengedit data tersebut.
 - **Indikator Visual**: Tombol edit akan berubah menjadi abu-abu dan tidak dapat diklik, disertai tooltip "Data dikunci (Final)".
 - **Hak Akses Admin**: User dengan role `Super Admin`, `Admin`, atau `Editor` tetap dapat mengedit data meskipun dalam status terkunci.

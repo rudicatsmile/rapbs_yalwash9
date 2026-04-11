@@ -61,7 +61,7 @@ class FinancialRecordReplicationTest extends TestCase
         // Perform Replicate Action
         Livewire::actingAs($admin)
             ->test(ListFinancialRecords::class)
-            ->callTableAction('replicate', $record);
+            ->callTableAction('duplicate_record', $record);
 
         // Assert Final State
         // Should be 2 records

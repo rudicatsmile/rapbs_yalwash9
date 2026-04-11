@@ -6,7 +6,6 @@ use App\Filament\Resources\FinancialRecords\Pages\ListFinancialRecords;
 use App\Models\Department;
 use App\Models\FinancialRecord;
 use App\Models\User;
-use Filament\Actions\ReplicateAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -45,14 +44,14 @@ class FinancialRecordDuplicationTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(ListFinancialRecords::class)
-            ->callTableAction(ReplicateAction::class, $record);
+            ->callTableAction('duplicate_record', $record);
 
         $this->assertDatabaseCount('financial_records', 2);
         $duplicate = FinancialRecord::latest('id')->first();
         $this->assertNotEquals($record->id, $duplicate->id);
         $this->assertEquals($record->record_name, $duplicate->record_name);
         $this->assertEquals($record->income_amount, $duplicate->income_amount);
-        $this->assertTrue((bool) $duplicate->status, 'Duplicate status should be active');
+        $this->assertFalse((bool) $duplicate->status, 'Duplicate status should be inactive');
     }
 
     public function test_can_bulk_duplicate_records()
@@ -83,10 +82,10 @@ class FinancialRecordDuplicationTest extends TestCase
 
         $this->assertDatabaseCount('financial_records', 5); // 3 original + 2 duplicates
 
-        // Verify duplicates are active
+        // Verify duplicates are inactive
         $duplicates = FinancialRecord::latest('id')->take(2)->get();
         foreach ($duplicates as $duplicate) {
-            $this->assertTrue((bool) $duplicate->status, 'Bulk duplicate status should be active');
+            $this->assertFalse((bool) $duplicate->status, 'Bulk duplicate status should be inactive');
         }
     }
 }

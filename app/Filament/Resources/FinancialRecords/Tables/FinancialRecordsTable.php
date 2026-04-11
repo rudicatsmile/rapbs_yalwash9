@@ -6,6 +6,7 @@ use App\Filament\Exports\FinancialRecordExporter;
 use App\Models\Department;
 use App\Models\ExpenseItem;
 use App\Models\FinancialRecord;
+use App\Services\FinancialRecordDuplicator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Filament\Actions\Action;
@@ -13,7 +14,6 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
-use Filament\Actions\ReplicateAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
@@ -24,6 +24,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -229,36 +230,58 @@ class FinancialRecordsTable
                     ->iconButton()
                     ->tooltip('View History'),
 
-
-
                 EditAction::make()
                     ->iconButton()
                     ->tooltip('Edit Record'),
 
-                ReplicateAction::make()
+                Action::make('duplicate_record')
                     ->label('Duplicate')
+                    ->icon('heroicon-m-document-duplicate')
+                    ->authorize(fn() => auth()->user()?->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor', 'user']) ?? false)
+                    ->visible(fn() => auth()->user()?->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor', 'user']) ?? false)
                     ->modalHeading('Duplicate Record')
                     ->modalDescription('Are you sure you want to duplicate this record? This will create a new entry with the same values.')
                     ->modalSubmitActionLabel('Yes, Duplicate')
                     ->action(function (FinancialRecord $record) {
-                        DB::transaction(function () use ($record) {
-                            $replica = $record->replicate(['mandiri_expense', 'bos_expense']);
-                            $replica->status = true;
-                            $replica->save();
+                        try {
+                            $duplicator = app(FinancialRecordDuplicator::class);
+                            $replica = $duplicator->duplicate($record);
 
-                            foreach ($record->expenseItems as $item) {
-                                $newItem = $item->replicate();
-                                $newItem->financial_record_id = $replica->id;
-                                $newItem->save();
-                            }
-
-                            Log::info("Replicated FinancialRecord {$record->id} to {$replica->id} with items.");
+                            Log::info("Duplicated FinancialRecord {$record->id} to {$replica->id} with items and lines.");
 
                             Notification::make()
                                 ->title('Record Duplicated')
                                 ->success()
                                 ->send();
-                        });
+                        } catch (\DomainException $e) {
+                            Notification::make()
+                                ->title('Duplikasi dibatalkan')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        } catch (QueryException $e) {
+                            Log::error('Duplicate record failed (constraint)', [
+                                'exception' => $e,
+                                'record_id' => $record->id ?? null,
+                            ]);
+
+                            Notification::make()
+                                ->title('Duplikasi gagal')
+                                ->body('Duplikasi gagal karena constraint database.')
+                                ->danger()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            Log::error('Duplicate record failed', [
+                                'exception' => $e,
+                                'record_id' => $record->id ?? null,
+                            ]);
+
+                            Notification::make()
+                                ->title('Duplikasi gagal')
+                                ->body('Terjadi kesalahan saat menduplikasi record.')
+                                ->danger()
+                                ->send();
+                        }
                     })
                     ->iconButton() // Render as icon button
                     ->tooltip('Duplicate Record'), // Add tooltip
@@ -373,7 +396,6 @@ class FinancialRecordsTable
                     })
                     ->iconButton(),
 
-
                 Action::make('attachments')
                     ->label('Lampiran')
                     ->icon('heroicon-m-paper-clip')
@@ -476,26 +498,48 @@ class FinancialRecordsTable
                     ->modalDescription('Are you sure you want to duplicate the selected records?')
                     ->modalSubmitActionLabel('Yes, Duplicate')
                     ->action(function (Collection $records) {
-                        DB::transaction(function () use ($records) {
-                            foreach ($records as $record) {
-                                $newRecord = $record->replicate(['mandiri_expense', 'bos_expense']);
-                                $newRecord->status = true;
-                                $newRecord->save();
+                        $duplicator = app(FinancialRecordDuplicator::class);
 
-                                foreach ($record->expenseItems as $item) {
-                                    $newItem = $item->replicate();
-                                    $newItem->financial_record_id = $newRecord->id;
-                                    $newItem->save();
+                        try {
+                            DB::transaction(function () use ($records, $duplicator) {
+                                foreach ($records as $record) {
+                                    $record->loadMissing(['expenseItems', 'realizationExpenseLines']);
+                                    $newRecord = $duplicator->duplicateWithinTransaction($record);
+                                    Log::info("Bulk duplicated FinancialRecord {$record->id} to {$newRecord->id} with items and lines.");
                                 }
+                            });
 
-                                Log::info("Bulk Replicated FinancialRecord {$record->id} to {$newRecord->id} with items.");
-                            }
-                        });
+                            Notification::make()
+                                ->title('Records Duplicated')
+                                ->success()
+                                ->send();
+                        } catch (\DomainException $e) {
+                            Notification::make()
+                                ->title('Duplikasi dibatalkan')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        } catch (QueryException $e) {
+                            Log::error('Bulk duplicate failed (constraint)', [
+                                'exception' => $e,
+                            ]);
 
-                        Notification::make()
-                            ->title('Records Duplicated')
-                            ->success()
-                            ->send();
+                            Notification::make()
+                                ->title('Duplikasi gagal')
+                                ->body('Duplikasi gagal karena constraint database.')
+                                ->danger()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            Log::error('Bulk duplicate failed', [
+                                'exception' => $e,
+                            ]);
+
+                            Notification::make()
+                                ->title('Duplikasi gagal')
+                                ->body('Terjadi kesalahan saat menduplikasi record.')
+                                ->danger()
+                                ->send();
+                        }
                     })
                     ->deselectRecordsAfterCompletion(),
             ])
