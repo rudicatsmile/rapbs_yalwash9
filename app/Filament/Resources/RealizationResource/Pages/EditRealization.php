@@ -124,7 +124,7 @@ class EditRealization extends EditRecord
     public function mount($record): void
     {
         parent::mount($record);
-        if (Auth::check() && Auth::user()->hasRole('user') && $this->record?->status_realisasi == 1) {
+        if (Auth::check() && Auth::user()->hasRole('user') && $this->record?->is_approved_by_bendahara == 1) {
             abort(403, 'Forbidden');
         }
     }

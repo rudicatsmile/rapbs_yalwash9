@@ -36,7 +36,8 @@ class RealizationAccessControlTest extends TestCase
         $user->givePermissionTo('Update:FinancialRecord');
 
         $financialRecord = FinancialRecord::factory()->create([
-            'status_realisasi' => true, // Locked
+            'is_approved_by_bendahara' => true, // Locked
+            'status_realisasi' => true,
             'status' => true, // Active
             'department_id' => $department->id,
         ]);
@@ -62,7 +63,8 @@ class RealizationAccessControlTest extends TestCase
         $admin->givePermissionTo('Update:FinancialRecord');
 
         $financialRecord = FinancialRecord::factory()->create([
-            'status_realisasi' => true, // Locked
+            'is_approved_by_bendahara' => true, // Locked
+            'status_realisasi' => true,
             'status' => true, // Active
         ]);
 
@@ -86,7 +88,8 @@ class RealizationAccessControlTest extends TestCase
         $user->givePermissionTo('Update:FinancialRecord');
 
         $financialRecord = FinancialRecord::factory()->create([
-            'status_realisasi' => false, // Unlocked
+            'is_approved_by_bendahara' => false, // Not locked
+            'status_realisasi' => true, // Should not lock edit when not approved
             'status' => true, // Active
             'department_id' => $department->id,
         ]);
@@ -102,7 +105,7 @@ class RealizationAccessControlTest extends TestCase
             ->assertTableActionEnabled('edit', $record);
     }
 
-    public function test_user_cannot_edit_inactive_record_regardless_of_realization_status()
+    public function test_user_can_edit_inactive_record_when_not_approved_by_bendahara()
     {
         $user = User::factory()->create();
         $user->assignRole('user');
@@ -110,6 +113,7 @@ class RealizationAccessControlTest extends TestCase
         $user->givePermissionTo('Update:FinancialRecord');
 
         $financialRecord = FinancialRecord::factory()->create([
+            'is_approved_by_bendahara' => false,
             'status_realisasi' => false,
             'status' => false, // Inactive
         ]);
@@ -128,7 +132,8 @@ class RealizationAccessControlTest extends TestCase
         $user->givePermissionTo('Update:FinancialRecord');
 
         $financialRecord = FinancialRecord::factory()->create([
-            'status_realisasi' => true, // Locked
+            'is_approved_by_bendahara' => true, // Locked
+            'status_realisasi' => true,
             'status' => true,
             'department_id' => $department->id,
         ]);
@@ -151,7 +156,8 @@ class RealizationAccessControlTest extends TestCase
         $user->givePermissionTo('Update:FinancialRecord');
 
         $financialRecord = FinancialRecord::factory()->create([
-            'status_realisasi' => true, // Locked
+            'is_approved_by_bendahara' => true, // Locked
+            'status_realisasi' => true,
             'status' => true,
             'department_id' => $department->id,
         ]);
@@ -160,5 +166,27 @@ class RealizationAccessControlTest extends TestCase
         $this->actingAs($user);
         $response = $this->get(\App\Filament\Resources\RealizationResource::getUrl('edit', ['record' => $record]));
         $response->assertStatus(403);
+    }
+
+    public function test_user_can_access_edit_when_status_realisasi_is_one_but_not_approved_by_bendahara(): void
+    {
+        $department = \App\Models\Department::create(['name' => 'Test Dept']);
+        $user = User::factory()->create(['department_id' => $department->id]);
+        $user->assignRole('user');
+        $user->givePermissionTo('ViewAny:FinancialRecord');
+        $user->givePermissionTo('Update:FinancialRecord');
+
+        $financialRecord = FinancialRecord::factory()->create([
+            'status_realisasi' => true,
+            'is_approved_by_bendahara' => false,
+            'status' => false,
+            'department_id' => $department->id,
+        ]);
+
+        $record = \App\Models\Realization::find($financialRecord->id);
+
+        $this->actingAs($user);
+        $response = $this->get(\App\Filament\Resources\RealizationResource::getUrl('edit', ['record' => $record]));
+        $response->assertStatus(200);
     }
 }

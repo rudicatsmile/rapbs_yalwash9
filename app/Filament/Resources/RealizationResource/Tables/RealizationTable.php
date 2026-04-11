@@ -19,10 +19,10 @@ class RealizationTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->recordUrl(fn ($record) => ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user'))
+            ->recordUrl(fn ($record) => ($record?->is_approved_by_bendahara == 1 && auth()->user()?->hasRole('user'))
                 ? null
                 : \App\Filament\Resources\RealizationResource::getUrl('edit', ['record' => $record]))
-            ->recordClasses(fn ($record) => ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user'))
+            ->recordClasses(fn ($record) => ($record?->is_approved_by_bendahara == 1 && auth()->user()?->hasRole('user'))
                 ? 'pointer-events-none opacity-60 hover:bg-transparent'
                 : null)
             ->columns([
@@ -32,7 +32,7 @@ class RealizationTable
                     ->wrap()
                     ->extraAttributes(function ($record) {
                         $attributes = ['class' => 'filament-tables-column-record-name'];
-                        if ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user')) {
+                        if ($record?->is_approved_by_bendahara == 1 && auth()->user()?->hasRole('user')) {
                             $attributes['title'] = 'Access Denied';
                         }
 
@@ -44,7 +44,7 @@ class RealizationTable
                     ->sortable()
                     ->badge()
                     ->description(fn ($record) => $record->record_date ? $record->record_date->format('d M Y') : '-')
-                    ->extraAttributes(fn ($record) => ($record?->status_realisasi == 1 && auth()->user()?->hasRole('user')) ? ['title' => 'Access Denied'] : []),
+                    ->extraAttributes(fn ($record) => ($record?->is_approved_by_bendahara == 1 && auth()->user()?->hasRole('user')) ? ['title' => 'Access Denied'] : []),
                 TextColumn::make('media_count')
                     ->label('Lampiran')
                     ->badge()
@@ -93,9 +93,9 @@ class RealizationTable
                     ->icon('heroicon-o-calculator')
                     ->url(fn ($record) => \App\Filament\Resources\RealizationResource::getUrl('edit', ['record' => $record]))
                     ->iconButton()
-                    ->color(fn ($record) => $record?->status_realisasi == 1 && ! auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor']) ? 'gray' : 'primary')
-                    ->disabled(fn ($record) => (! $record) || ($record->status_realisasi == 1 && ! auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])))
-                    ->tooltip(fn ($record) => $record?->status_realisasi == 1 && ! auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor']) ? 'Data dikunci (Final)' : 'Input Realisasi'),
+                    ->color(fn ($record) => $record?->is_approved_by_bendahara == 1 && ! auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'bendahara', 'Admin', 'Super admin', 'Editor']) ? 'gray' : 'primary')
+                    ->disabled(fn ($record) => (! $record) || ($record->is_approved_by_bendahara == 1 && ! auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'bendahara', 'Admin', 'Super admin', 'Editor'])))
+                    ->tooltip(fn ($record) => $record?->is_approved_by_bendahara == 1 && ! auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'bendahara', 'Admin', 'Super admin', 'Editor']) ? 'Data dikunci (Final)' : 'Input Realisasi'),
                 Action::make('download_excel')
                     ->label('Download excel')
                     ->icon('heroicon-o-arrow-down-tray')

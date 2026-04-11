@@ -38,9 +38,9 @@ class RealizationPolicy
      */
     public function update(User $user, Realization $realization): Response
     {
-        // Check if status_realisasi is locked (1)
-        if ($realization->status_realisasi == 1) {
-            // Only Super Admin, Admin, and Editor can edit locked realization records
+        $isLocked = (bool) $realization->is_approved_by_bendahara;
+
+        if ($isLocked) {
             if (! $user->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor', 'bendahara'])) {
                 return Response::deny('Akses ditolak - Data realisasi telah dikunci (Final) dan hanya dapat diedit oleh Admin/Editor/Bendahara.');
             }
