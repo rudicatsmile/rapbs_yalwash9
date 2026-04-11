@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Filament\Resources\FinancialRecords\Pages\CreateFinancialRecord;
 use App\Filament\Resources\FinancialRecords\Pages\EditFinancialRecord;
 use App\Models\Department;
-use App\Models\User;
 use App\Models\FinancialRecord;
+use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -58,7 +58,7 @@ class FinancialRecordInactiveWhatsAppNotificationTest extends TestCase
 
             return $request->url() === 'https://jkt.wablas.com/api/send-message'
                 && ($data['phone'] ?? null) === '6281234567890'
-                && str_contains((string) ($data['message'] ?? ''), 'TIDAK AKTIF');
+                && str_contains((string) ($data['message'] ?? ''), 'Pengajuan RAPBS Belum disetujui');
         });
     }
 
@@ -193,7 +193,47 @@ class FinancialRecordInactiveWhatsAppNotificationTest extends TestCase
 
             return $request->url() === 'https://jkt.wablas.com/api/send-message'
                 && ($data['phone'] ?? null) === '6281234567890'
-                && str_contains((string) ($data['message'] ?? ''), 'TIDAK AKTIF');
+                && str_contains((string) ($data['message'] ?? ''), 'Pengajuan RAPBS Belum disetujui');
+        });
+    }
+
+    public function test_edit_sends_whatsapp_only_after_save_when_status_changed_to_active(): void
+    {
+        Http::fake([
+            'https://jkt.wablas.com/api/send-message' => Http::response(['status' => 'success'], 200),
+        ]);
+
+        $department = Department::create([
+            'name' => 'Dept Edit Save Active',
+            'urut' => 1,
+            'phone' => '081234567890',
+        ]);
+
+        $admin = User::factory()->create(['department_id' => $department->id]);
+        $admin->assignRole('admin');
+        $admin->givePermissionTo(['ViewAny:FinancialRecord', 'Update:FinancialRecord']);
+
+        $record = FinancialRecord::factory()->create([
+            'user_id' => $admin->id,
+            'department_id' => $department->id,
+            'status' => false,
+            'record_name' => 'Record Edit Save Active',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(EditFinancialRecord::class, ['record' => $record->id])
+            ->fillForm([
+                'status' => true,
+            ])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        Http::assertSent(function ($request) {
+            $data = $request->data();
+
+            return $request->url() === 'https://jkt.wablas.com/api/send-message'
+                && ($data['phone'] ?? null) === '6281234567890'
+                && str_contains((string) ($data['message'] ?? ''), 'Pengajuan RAPBS Sudah disetujui');
         });
     }
 }

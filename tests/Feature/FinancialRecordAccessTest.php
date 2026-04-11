@@ -4,9 +4,9 @@ use App\Filament\Resources\FinancialRecords\FinancialRecordResource;
 use App\Models\Department;
 use App\Models\FinancialRecord;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
@@ -14,28 +14,28 @@ beforeEach(function () {
     // Setup Roles
     $this->roleUser = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
     $this->roleAdmin = Role::firstOrCreate(['name' => 'super_admin', 'guard_name' => 'web']);
-    
+
     // Setup Permissions (User needs view access)
     Permission::firstOrCreate(['name' => 'ViewAny:FinancialRecord', 'guard_name' => 'web']);
     Permission::firstOrCreate(['name' => 'View:FinancialRecord', 'guard_name' => 'web']);
     Permission::firstOrCreate(['name' => 'Update:FinancialRecord', 'guard_name' => 'web']);
-    
+
     $this->roleUser->givePermissionTo(['ViewAny:FinancialRecord', 'View:FinancialRecord', 'Update:FinancialRecord']);
-    
+
     // Create Departments
     $this->deptA = Department::create(['name' => 'Dept A', 'urut' => 1]);
     $this->deptB = Department::create(['name' => 'Dept B', 'urut' => 2]);
-    
+
     // Create Users
     $this->userA = User::factory()->create(['department_id' => $this->deptA->id]);
     $this->userA->assignRole('user');
-    
+
     $this->userB = User::factory()->create(['department_id' => $this->deptB->id]);
     $this->userB->assignRole('user');
-    
+
     $this->admin = User::factory()->create();
     $this->admin->assignRole('super_admin');
-    
+
     // Create Records
     $this->recordA = FinancialRecord::create([
         'user_id' => $this->userA->id,
@@ -46,8 +46,9 @@ beforeEach(function () {
         'income_percentage' => 10,
         'income_fixed' => 100000,
         'total_expense' => 0,
+        'status' => true,
     ]);
-    
+
     $this->recordB = FinancialRecord::create([
         'user_id' => $this->userB->id,
         'department_id' => $this->deptB->id,
@@ -57,6 +58,7 @@ beforeEach(function () {
         'income_percentage' => 20,
         'income_fixed' => 400000,
         'total_expense' => 0,
+        'status' => true,
     ]);
 });
 
@@ -66,7 +68,7 @@ test('user can only see own department records in list', function () {
         ->assertSuccessful()
         ->assertSee('Record Dept A')
         ->assertDontSee('Record Dept B');
-        
+
     $this->actingAs($this->userB)
         ->get(FinancialRecordResource::getUrl('index'))
         ->assertSuccessful()

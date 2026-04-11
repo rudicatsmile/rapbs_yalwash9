@@ -35,14 +35,14 @@ class FinancialRecordForm
                             ->default(false)
                             ->dehydrated(false),
                         Toggle::make('status')
-                            ->label(fn(Get $get) => (bool) $get('status') ? 'Sudah disetujui' : 'Belum disetujui')
+                            ->label(fn (Get $get) => (bool) $get('status') ? 'Sudah disetujui' : 'Belum disetujui')
                             ->onIcon('heroicon-m-check')
                             ->offIcon('heroicon-m-x-mark')
                             ->onColor('success')
                             ->offColor('danger')
                             ->default(true)
-                            ->visible(fn() => auth()->user() && !auth()->user()->hasRole('user'))
-                            ->disabled(fn() => auth()->user() && auth()->user()->hasRole('user'))
+                            ->visible(fn () => auth()->user() && ! auth()->user()->hasRole('user'))
+                            ->disabled(fn () => auth()->user() && auth()->user()->hasRole('user'))
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set, $state, ?\Illuminate\Database\Eloquent\Model $record = null): void {
                                 if ($record && $record->exists) {
@@ -63,7 +63,7 @@ class FinancialRecordForm
 
                                 $departmentId = $get('department_id');
 
-                                if (!$departmentId) {
+                                if (! $departmentId) {
                                     Log::warning('WhatsApp notification skipped: department not selected (status inactive)', [
                                         'user_id' => auth()->id(),
                                     ]);
@@ -79,7 +79,7 @@ class FinancialRecordForm
 
                                 $department = Department::query()->find($departmentId);
 
-                                if (!$department) {
+                                if (! $department) {
                                     Log::warning('WhatsApp notification skipped: department not found (status inactive)', [
                                         'user_id' => auth()->id(),
                                         'department_id' => $departmentId,
@@ -97,7 +97,7 @@ class FinancialRecordForm
                                 $phone = (string) ($department->phone ?? '');
                                 $waService = new WhatsAppService;
 
-                                if (!$waService->isValidPhone($phone)) {
+                                if (! $waService->isValidPhone($phone)) {
                                     Log::warning('WhatsApp notification skipped: invalid department phone (status inactive)', [
                                         'user_id' => auth()->id(),
                                         'department_id' => $department->id,
@@ -148,14 +148,14 @@ class FinancialRecordForm
                                 $actorName = auth()->user()?->name ?? '-';
 
                                 $message = "*Ef-Fin9 Sistem*\n\n"
-                                    . "Perubahan status Financial Record menjadi *TIDAK AKTIF*.\n\n"
-                                    . "Departemen: {$department->name}\n"
-                                    . "Nama History: {$recordName}\n"
-                                    . "Tanggal: {$recordDateFormatted}\n"
-                                    . "Bulan: {$monthLabel}\n"
-                                    . 'Total Pemasukan: Rp ' . number_format($incomeTotal, 0, ',', '.') . "\n"
-                                    . "Diubah oleh: {$actorName}\n"
-                                    . "Waktu: {$timestamp}";
+                                    ."*Pengajuan RAPBS Belum disetujui*\n\n"
+                                    ."Departemen: {$department->name}\n"
+                                    ."Nama History: {$recordName}\n"
+                                    ."Tanggal: {$recordDateFormatted}\n"
+                                    ."Bulan: {$monthLabel}\n"
+                                    .'Total Pemasukan: Rp '.number_format($incomeTotal, 0, ',', '.')."\n"
+                                    ."Diubah oleh: {$actorName}\n"
+                                    ."Waktu: {$timestamp}";
 
                                 Log::info('Attempting WhatsApp notification (status inactive)', [
                                     'user_id' => auth()->id(),
@@ -186,7 +186,7 @@ class FinancialRecordForm
                         Select::make('department_id')
                             ->relationship('department', 'name', modifyQueryUsing: function (Builder $query) {
                                 $user = auth()->user();
-                                if ($user && $user->hasRole('user') && !$user->hasRole(['super_admin', 'admin'])) {
+                                if ($user && $user->hasRole('user') && ! $user->hasRole(['super_admin', 'admin'])) {
                                     $query->where('id', $user->department_id);
                                 }
 
@@ -196,8 +196,8 @@ class FinancialRecordForm
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->default(fn() => auth()->user() && auth()->user()->hasRole('user') && !auth()->user()->hasRole(['super_admin', 'admin']) ? auth()->user()->department_id : null)
-                            ->disabled(fn() => auth()->user() && auth()->user()->hasRole('user') && !auth()->user()->hasRole(['super_admin', 'admin']))
+                            ->default(fn () => auth()->user() && auth()->user()->hasRole('user') && ! auth()->user()->hasRole(['super_admin', 'admin']) ? auth()->user()->department_id : null)
+                            ->disabled(fn () => auth()->user() && auth()->user()->hasRole('user') && ! auth()->user()->hasRole(['super_admin', 'admin']))
                             ->dehydrated(),
                         DatePicker::make('record_date')
                             ->label('Tanggal')
@@ -219,13 +219,13 @@ class FinancialRecordForm
                                 '11' => 'November',
                                 '12' => 'Desember',
                             ])
-                            ->default(fn() => (string) now()->month)
+                            ->default(fn () => (string) now()->month)
                             ->required()
                             ->dehydrated()
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                 $allowed = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-                                if (!in_array((string) $state, $allowed, true)) {
+                                if (! in_array((string) $state, $allowed, true)) {
                                     $set('month', (string) now()->month);
                                 }
                             }),
@@ -243,12 +243,12 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                 self::calculateIncomeFixed($get, $set);
                             })
-                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
                             ->extraInputAttributes([
                                 'inputmode' => 'numeric',
                                 'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
@@ -259,12 +259,12 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                 self::calculateIncomeFixed($get, $set);
                             })
-                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
                             ->extraInputAttributes([
                                 'inputmode' => 'numeric',
                                 'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
@@ -277,8 +277,8 @@ class FinancialRecordForm
                             ->dehydrated()
                             ->default(0)
                             ->stripCharacters('.')
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
-                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
+                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
                             ->columnSpanFull(),
                     ])->columns(1),
 
@@ -290,12 +290,12 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                 self::calculateTotalIncome($get, $set);
                             })
-                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
                             ->extraInputAttributes([
                                 'inputmode' => 'numeric',
                                 'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
@@ -307,12 +307,12 @@ class FinancialRecordForm
                             ->prefix('Rp')
                             ->default(0)
                             ->stripCharacters('.')
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                 self::calculateTotalIncome($get, $set);
                             })
-                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
                             ->extraInputAttributes([
                                 'inputmode' => 'numeric',
                                 'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",
@@ -329,8 +329,8 @@ class FinancialRecordForm
                             ->dehydrated()
                             ->default(0)
                             ->stripCharacters('.')
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
-                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
+                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
                             ->columnSpanFull(),
                     ])->columns(1),
 
@@ -374,8 +374,8 @@ class FinancialRecordForm
                             ->dehydrated()
                             ->default(0)
                             ->stripCharacters('.')
-                            ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
-                            ->dehydrateStateUsing(fn($state) => self::parseMoney($state)),
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
+                            ->dehydrateStateUsing(fn ($state) => self::parseMoney($state)),
 
                         Repeater::make('expenseItems')
                             ->relationship('expenseItems')
@@ -397,12 +397,12 @@ class FinancialRecordForm
                                     ->prefix('Rp')
                                     ->default(0)
                                     ->stripCharacters('.')
-                                    ->formatStateUsing(fn($state) => number_format((float) $state, 0, ',', '.'))
+                                    ->formatStateUsing(fn ($state) => number_format((float) $state, 0, ',', '.'))
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(function (Get $get, Set $set, ?string $state) {
                                         self::calculateTotalExpense($get, $set);
                                     })
-                                    ->dehydrateStateUsing(fn($state) => self::parseMoney($state))
+                                    ->dehydrateStateUsing(fn ($state) => self::parseMoney($state))
                                     ->extraInputAttributes([
                                         'inputmode' => 'numeric',
                                         'oninput' => "const el=this;let raw=el.value.replace(/\\D/g,'');if(!raw){el.value='';return;}let v=raw.replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.');el.value=v;el.setSelectionRange(v.length,v.length);",

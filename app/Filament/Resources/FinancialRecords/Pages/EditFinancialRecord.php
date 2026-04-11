@@ -13,7 +13,9 @@ class EditFinancialRecord extends EditRecord
 {
     protected static string $resource = FinancialRecordResource::class;
 
-    protected bool $shouldSendInactiveStatusWhatsAppNotification = false;
+    protected bool $shouldSendStatusWhatsAppNotification = false;
+
+    protected ?bool $statusWhatsAppNotificationValue = null;
 
     protected function getHeaderActions(): array
     {
@@ -29,14 +31,15 @@ class EditFinancialRecord extends EditRecord
         $newValue = (bool) ($state['status'] ?? false);
         $oldValue = (bool) $this->record->status;
 
-        if (($newValue !== $oldValue) && ($newValue === false)) {
-            $this->shouldSendInactiveStatusWhatsAppNotification = true;
+        if ($newValue !== $oldValue) {
+            $this->shouldSendStatusWhatsAppNotification = true;
+            $this->statusWhatsAppNotificationValue = $newValue;
         }
     }
 
     protected function afterSave(): void
     {
-        if (! $this->shouldSendInactiveStatusWhatsAppNotification) {
+        if (! $this->shouldSendStatusWhatsAppNotification) {
             return;
         }
 
@@ -56,13 +59,14 @@ class EditFinancialRecord extends EditRecord
                 ->danger()
                 ->send();
 
-            $this->shouldSendInactiveStatusWhatsAppNotification = false;
+            $this->shouldSendStatusWhatsAppNotification = false;
+            $this->statusWhatsAppNotificationValue = null;
 
             return;
         }
 
         $phone = (string) ($department->phone ?? '');
-        $waService = new WhatsAppService();
+        $waService = new WhatsAppService;
 
         if (! $waService->isValidPhone($phone)) {
             Log::warning('WhatsApp notification skipped (edit): invalid department phone', [
@@ -78,10 +82,14 @@ class EditFinancialRecord extends EditRecord
                 ->danger()
                 ->send();
 
-            $this->shouldSendInactiveStatusWhatsAppNotification = false;
+            $this->shouldSendStatusWhatsAppNotification = false;
+            $this->statusWhatsAppNotificationValue = null;
 
             return;
         }
+
+        $newStatus = (bool) ($this->statusWhatsAppNotificationValue ?? $this->record->status);
+        $statusLabel = $newStatus ? 'Pengajuan RAPBS Sudah disetujui' : 'Pengajuan RAPBS Belum disetujui';
 
         $monthNames = [
             1 => 'Januari',
@@ -108,20 +116,21 @@ class EditFinancialRecord extends EditRecord
         $actorName = auth()->user()?->name ?? '-';
 
         $message = "*Ef-Fin9 Sistem*\n\n"
-            . "Perubahan status Financial Record menjadi *TIDAK AKTIF*.\n\n"
-            . "Departemen: {$department->name}\n"
-            . "Nama History: {$recordName}\n"
-            . "Tanggal: {$recordDateFormatted}\n"
-            . "Bulan: {$monthLabel}\n"
-            . "Total Pemasukan: Rp " . number_format($incomeTotal, 0, ',', '.') . "\n"
-            . "Diubah oleh: {$actorName}\n"
-            . "Waktu: {$timestamp}";
+            ."*{$statusLabel}*\n\n"
+            ."Departemen: {$department->name}\n"
+            ."Nama History: {$recordName}\n"
+            ."Tanggal: {$recordDateFormatted}\n"
+            ."Bulan: {$monthLabel}\n"
+            .'Total Pemasukan: Rp '.number_format($incomeTotal, 0, ',', '.')."\n"
+            ."Diubah oleh: {$actorName}\n"
+            ."Waktu: {$timestamp}";
 
-        Log::info('Attempting WhatsApp notification (edit: status inactive)', [
+        Log::info('Attempting WhatsApp notification (edit: status changed)', [
             'financial_record_id' => $this->record->id,
             'department_id' => $department->id,
             'phone' => $waService->normalizePhone($phone),
             'user_id' => auth()->id(),
+            'status' => $newStatus,
         ]);
 
         $success = $waService->sendMessage($phone, $message);
@@ -129,7 +138,7 @@ class EditFinancialRecord extends EditRecord
         if ($success) {
             Notification::make()
                 ->title('Notifikasi WhatsApp terkirim')
-                ->body("Departemen {$department->name} telah menerima pemberitahuan status tidak aktif.")
+                ->body("Departemen {$department->name} telah menerima pemberitahuan: {$statusLabel}.")
                 ->success()
                 ->send();
         } else {
@@ -140,7 +149,8 @@ class EditFinancialRecord extends EditRecord
                 ->send();
         }
 
-        $this->shouldSendInactiveStatusWhatsAppNotification = false;
+        $this->shouldSendStatusWhatsAppNotification = false;
+        $this->statusWhatsAppNotificationValue = null;
     }
 
     protected function getRedirectUrl(): string

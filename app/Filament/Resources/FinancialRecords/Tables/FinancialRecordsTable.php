@@ -2,35 +2,35 @@
 
 namespace App\Filament\Resources\FinancialRecords\Tables;
 
-use Illuminate\Support\Facades\Storage;
+use App\Filament\Exports\FinancialRecordExporter;
+use App\Models\Department;
+use App\Models\ExpenseItem;
+use App\Models\FinancialRecord;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
 use Filament\Actions\ReplicateAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Summarizers\Summarizer;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Filament\Notifications\Notification;
-use App\Models\FinancialRecord;
-use Filament\Actions\ExportAction;
-use App\Filament\Exports\FinancialRecordExporter;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Database\Eloquent\Builder;
-use Filament\Forms\Components\FileUpload;
-use OpenSpout\Reader\XLSX\Reader;
-use App\Models\Department;
-use App\Models\ExpenseItem;
-use Carbon\Carbon;
-use OpenSpout\Common\Entity\Row;
-use OpenSpout\Writer\XLSX\Writer;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\HtmlString;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Reader\XLSX\Reader;
+use OpenSpout\Writer\XLSX\Writer;
 
 class FinancialRecordsTable
 {
@@ -117,6 +117,7 @@ class FinancialRecordsTable
                                     $html .= '</div>';
                                 }
                                 $html .= '</div>';
+
                                 return $html;
                             })
                     ),
@@ -169,6 +170,7 @@ class FinancialRecordsTable
                                     ->where('source_type', 'BOS')
                                     ->whereIn('financial_record_id', $query->clone()->reorder()->select('id'))
                                     ->sum('amount');
+
                                 return (object) ['total' => $total, 'mandiri' => $mandiri, 'bos' => $bos];
                             })
                             ->formatStateUsing(function ($state) {
@@ -187,6 +189,7 @@ class FinancialRecordsTable
                                     $html .= '</div>';
                                 }
                                 $html .= '</div>';
+
                                 return $html;
                             })
                     ),
@@ -226,6 +229,151 @@ class FinancialRecordsTable
                     ->iconButton()
                     ->tooltip('View History'),
 
+
+
+                EditAction::make()
+                    ->iconButton()
+                    ->tooltip('Edit Record'),
+
+                ReplicateAction::make()
+                    ->label('Duplicate')
+                    ->modalHeading('Duplicate Record')
+                    ->modalDescription('Are you sure you want to duplicate this record? This will create a new entry with the same values.')
+                    ->modalSubmitActionLabel('Yes, Duplicate')
+                    ->action(function (FinancialRecord $record) {
+                        DB::transaction(function () use ($record) {
+                            $replica = $record->replicate(['mandiri_expense', 'bos_expense']);
+                            $replica->status = true;
+                            $replica->save();
+
+                            foreach ($record->expenseItems as $item) {
+                                $newItem = $item->replicate();
+                                $newItem->financial_record_id = $replica->id;
+                                $newItem->save();
+                            }
+
+                            Log::info("Replicated FinancialRecord {$record->id} to {$replica->id} with items.");
+
+                            Notification::make()
+                                ->title('Record Duplicated')
+                                ->success()
+                                ->send();
+                        });
+                    })
+                    ->iconButton() // Render as icon button
+                    ->tooltip('Duplicate Record'), // Add tooltip
+
+                Action::make('status')
+                    ->label(fn($record) => $record->status ? 'Active' : 'Inactive')
+                    ->icon(function ($record) {
+                        $status = $record->status;
+
+                        if (!in_array($status, [0, 1, true, false, '0', '1'], true)) {
+                            return 'heroicon-m-exclamation-triangle';
+                        }
+
+                        $isUserRole = auth()->user()?->hasRole('user') ?? false;
+                        $isActive = (bool) $status;
+                        $isSuccess = $isUserRole ? (!$isActive) : $isActive;
+
+                        return $isSuccess ? 'heroicon-m-check-circle' : 'heroicon-m-x-circle';
+                    })
+                    ->color(function ($record) {
+                        $status = $record->status;
+
+                        if (!in_array($status, [0, 1, true, false, '0', '1'], true)) {
+                            return 'danger';
+                        }
+
+                        $isUserRole = auth()->user()?->hasRole('user') ?? false;
+                        $isActive = (bool) $status;
+
+                        return $isUserRole
+                            ? ($isActive ? 'danger' : 'success')
+                            : ($isActive ? 'success' : 'danger');
+                    })
+                    ->action(fn($record) => $record->update(['status' => !$record->status]))
+                    ->disabled(fn() => auth()->user() && auth()->user()->hasRole('user'))
+                    ->iconButton() // Render as icon button
+                    ->tooltip(fn($record) => $record->status ? 'Sudah disetujui' : 'Belum disetujui'), // Dynamic tooltip
+
+                Action::make('download_excel')
+                    ->label('Download Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->tooltip('Download Excel')
+                    ->action(function (FinancialRecord $record) {
+                        return response()->streamDownload(function () use ($record) {
+                            $writer = new \OpenSpout\Writer\XLSX\Writer;
+                            $writer->openToFile('php://output');
+
+                            // 1. Structure changes
+                            $headers = ['Tanggal Transaksi', 'Departemen', 'Deskripsi', 'Jumlah Nominal', 'Tipe', 'Saldo Akhir'];
+                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($headers));
+
+                            $type = $record->income_fixed > 0 ? 'Pemasukan' : 'Pengeluaran';
+                            $nominal = $record->income_fixed > 0 ? $record->income_fixed : $record->total_expense;
+                            $balance = $record->income_fixed - $record->total_expense;
+
+                            $row = [
+                                $record->record_date ? $record->record_date->format('d-m-Y') : '-',
+                                $record->department->name ?? '-',
+                                $record->record_name,
+                                number_format($nominal, 2, ',', '.'),
+                                $type,
+                                number_format($balance, 2, ',', '.'),
+                            ];
+                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($row));
+
+                            // Spacer row
+                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([]));
+                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([]));
+
+                            // 2. Expense Items Integration
+                            $expenseItems = $record->expenseItems;
+                            if ($expenseItems->isNotEmpty()) {
+                                // Section Header
+                                $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues(['Rincian Pengeluaran']));
+
+                                // Table Headers
+                                $itemHeaders = ['No', 'Deskripsi Item', 'Jumlah'];
+                                $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($itemHeaders));
+
+                                $totalAmount = 0;
+                                foreach ($expenseItems as $index => $item) {
+                                    $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([
+                                        $index + 1,
+                                        $item->description,
+                                        number_format($item->amount, 2, ',', '.'),
+                                    ]));
+                                    $totalAmount += $item->amount;
+                                }
+
+                                // 3. Total Amount Row
+                                $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([
+                                    '',
+                                    'Total',
+                                    number_format($totalAmount, 2, ',', '.'),
+                                ]));
+                            }
+
+                            $writer->close();
+                        }, 'Effin9_' . ($record->department->name ?? 'Umum') . '_' . now()->format('Y-m-d') . '.xlsx');
+                    })
+                    ->iconButton(),
+
+                Action::make('pdf')
+                    ->label('PDF')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('warning')
+                    ->tooltip('Download PDF')
+                    ->action(function (FinancialRecord $record) {
+                        return response()->streamDownload(function () use ($record) {
+                            echo Pdf::loadView('pdf.financial_record', ['record' => $record])->output();
+                        }, 'financial_record_' . $record->id . '_' . ($record->record_date ? $record->record_date->format('Y-m-d') : 'no-date') . '.pdf');
+                    })
+                    ->iconButton(),
+
+
                 Action::make('attachments')
                     ->label('Lampiran')
                     ->icon('heroicon-m-paper-clip')
@@ -250,6 +398,7 @@ class FinancialRecordsTable
                             }
 
                             $mb = $kb / 1024;
+
                             return number_format($mb, 1, '.', '') . ' MB';
                         };
 
@@ -312,123 +461,6 @@ class FinancialRecordsTable
                             ->success()
                             ->send();
                     }),
-
-                EditAction::make()
-                    ->iconButton()
-                    ->tooltip('Edit Record'),
-
-                ReplicateAction::make()
-                    ->label('Duplicate')
-                    ->modalHeading('Duplicate Record')
-                    ->modalDescription('Are you sure you want to duplicate this record? This will create a new entry with the same values.')
-                    ->modalSubmitActionLabel('Yes, Duplicate')
-                    ->action(function (FinancialRecord $record) {
-                        DB::transaction(function () use ($record) {
-                            $replica = $record->replicate(['mandiri_expense', 'bos_expense']);
-                            $replica->status = true;
-                            $replica->save();
-
-                            foreach ($record->expenseItems as $item) {
-                                $newItem = $item->replicate();
-                                $newItem->financial_record_id = $replica->id;
-                                $newItem->save();
-                            }
-
-                            Log::info("Replicated FinancialRecord {$record->id} to {$replica->id} with items.");
-
-                            Notification::make()
-                                ->title('Record Duplicated')
-                                ->success()
-                                ->send();
-                        });
-                    })
-                    ->iconButton() // Render as icon button
-                    ->tooltip('Duplicate Record'), // Add tooltip
-
-                Action::make('status')
-                    ->label(fn($record) => $record->status ? 'Active' : 'Inactive')
-                    ->icon(fn($record) => $record->status ? 'heroicon-m-check-circle' : 'heroicon-m-x-circle')
-                    ->color(fn($record) => $record->status ? 'success' : 'danger')
-                    ->action(fn($record) => $record->update(['status' => !$record->status]))
-                    ->disabled(fn() => auth()->user() && auth()->user()->hasRole('user'))
-                    ->iconButton() // Render as icon button
-                    ->tooltip(fn($record) => $record->status ? 'Deactivate Record' : 'Activate Record'), // Dynamic tooltip
-
-                Action::make('download_excel')
-                    ->label('Download Excel')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->tooltip('Download Excel')
-                    ->action(function (FinancialRecord $record) {
-                        return response()->streamDownload(function () use ($record) {
-                            $writer = new \OpenSpout\Writer\XLSX\Writer();
-                            $writer->openToFile('php://output');
-
-                            // 1. Structure changes
-                            $headers = ['Tanggal Transaksi', 'Departemen', 'Deskripsi', 'Jumlah Nominal', 'Tipe', 'Saldo Akhir'];
-                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($headers));
-
-                            $type = $record->income_fixed > 0 ? 'Pemasukan' : 'Pengeluaran';
-                            $nominal = $record->income_fixed > 0 ? $record->income_fixed : $record->total_expense;
-                            $balance = $record->income_fixed - $record->total_expense;
-
-                            $row = [
-                                $record->record_date ? $record->record_date->format('d-m-Y') : '-',
-                                $record->department->name ?? '-',
-                                $record->record_name,
-                                number_format($nominal, 2, ',', '.'),
-                                $type,
-                                number_format($balance, 2, ',', '.')
-                            ];
-                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($row));
-
-                            // Spacer row
-                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([]));
-                            $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([]));
-
-                            // 2. Expense Items Integration
-                            $expenseItems = $record->expenseItems;
-                            if ($expenseItems->isNotEmpty()) {
-                                // Section Header
-                                $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues(['Rincian Pengeluaran']));
-
-                                // Table Headers
-                                $itemHeaders = ['No', 'Deskripsi Item', 'Jumlah'];
-                                $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues($itemHeaders));
-
-                                $totalAmount = 0;
-                                foreach ($expenseItems as $index => $item) {
-                                    $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([
-                                        $index + 1,
-                                        $item->description,
-                                        number_format($item->amount, 2, ',', '.')
-                                    ]));
-                                    $totalAmount += $item->amount;
-                                }
-
-                                // 3. Total Amount Row
-                                $writer->addRow(\OpenSpout\Common\Entity\Row::fromValues([
-                                    '',
-                                    'Total',
-                                    number_format($totalAmount, 2, ',', '.')
-                                ]));
-                            }
-
-                            $writer->close();
-                        }, "Effin9_" . ($record->department->name ?? 'Umum') . "_" . now()->format('Y-m-d') . ".xlsx");
-                    })
-                    ->iconButton(),
-
-                Action::make('pdf')
-                    ->label('PDF')
-                    ->icon('heroicon-o-document-arrow-down')
-                    ->color('warning')
-                    ->tooltip('Download PDF')
-                    ->action(function (FinancialRecord $record) {
-                        return response()->streamDownload(function () use ($record) {
-                            echo Pdf::loadView('pdf.financial_record', ['record' => $record])->output();
-                        }, 'financial_record_' . $record->id . '_' . ($record->record_date ? $record->record_date->format('Y-m-d') : 'no-date') . '.pdf');
-                    })
-                    ->iconButton(),
             ])
             ->bulkActions([
                 DeleteBulkAction::make()
@@ -481,7 +513,7 @@ class FinancialRecordsTable
                     ->authorize(fn() => true)
                     ->action(function () {
                         return response()->streamDownload(function () {
-                            $writer = new Writer();
+                            $writer = new Writer;
                             $writer->openToFile('php://output');
 
                             $headers = [
@@ -627,7 +659,7 @@ class FinancialRecordsTable
 
                         try {
                             // Gunakan Reader XLSX langsung (karena kita membatasi upload ke .xlsx/.xls)
-                            $reader = new Reader();
+                            $reader = new Reader;
                             $reader->open($fullPath);
 
                             $recordsByKey = [];
@@ -646,6 +678,7 @@ class FinancialRecordsTable
                                         $header = array_map(function ($value) {
                                             return is_string($value) ? trim($value) : $value;
                                         }, $cells);
+
                                         continue;
                                     }
 
@@ -703,6 +736,7 @@ class FinancialRecordsTable
 
                                         if (!empty($rowErrorMessages)) {
                                             $rowErrors = array_merge($rowErrors, $rowErrorMessages);
+
                                             continue;
                                         }
 
@@ -714,18 +748,20 @@ class FinancialRecordsTable
 
                                         if ($incomeAmount < 0 || $riskAmount < 0 || $incomeBos < 0 || $incomeBosOther < 0 || $totalExpense < 0) {
                                             $rowErrors[] = "Baris {$line}: nilai keuangan tidak boleh negatif.";
+
                                             continue;
                                         }
 
                                         if ($riskAmount > $incomeAmount) {
                                             $rowErrors[] = "Baris {$line}: Resiko tidak dibayar melebihi Pemasukan (Rp).";
+
                                             continue;
                                         }
 
                                         $incomeFixed = $incomeAmount - $riskAmount;
                                         $incomeTotal = $incomeFixed + $incomeBos + $incomeBosOther;
 
-                                        $record = new FinancialRecord();
+                                        $record = new FinancialRecord;
                                         $record->user_id = auth()->id();
                                         $record->department_id = $departmentId;
                                         $record->record_date = $recordDate;
@@ -814,12 +850,14 @@ class FinancialRecordsTable
 
                                         if (!empty($rowErrorMessages)) {
                                             $rowErrors = array_merge($rowErrors, $rowErrorMessages);
+
                                             continue;
                                         }
 
                                         $amount = (float) $rowAssoc['amount'];
                                         if ($amount < 0) {
                                             $rowErrors[] = "Baris {$line} (sheet pengeluaran): jumlah pengeluaran tidak boleh negatif.";
+
                                             continue;
                                         }
 
@@ -827,12 +865,13 @@ class FinancialRecordsTable
                                         $allowedSourceTypes = ['Mandiri', 'BOS'];
                                         if (!in_array($sourceType, $allowedSourceTypes, true)) {
                                             $rowErrors[] = "Baris {$line} (sheet pengeluaran): source_type harus salah satu dari: Mandiri, BOS.";
+
                                             continue;
                                         }
 
                                         $record = $recordsByKey[$key];
 
-                                        $expenseItem = new ExpenseItem();
+                                        $expenseItem = new ExpenseItem;
                                         $expenseItem->financial_record_id = $record->id;
                                         $expenseItem->description = (string) $rowAssoc['description'];
                                         $expenseItem->amount = $amount;
@@ -906,8 +945,8 @@ class FinancialRecordsTable
                                 ->persistent()
                                 ->send();
                         }
-                    })
-                //->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
+                    }),
+                // ->visible(fn() => auth()->user()->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])),
             ]);
     }
 }

@@ -37,10 +37,11 @@ class FinancialRecordPolicy
      */
     public function update(User $user, FinancialRecord $financialRecord): Response
     {
-        // Check if status is inactive (false/0)
-        if ($financialRecord->status === false) {
+        $isInactive = (bool) $financialRecord->status;
+
+        if ($isInactive) {
             // Only Super Admin, Admin, and Editor can edit inactive records
-            if (! $user->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])) {
+            if (!$user->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])) {
                 return Response::deny('Akses ditolak - Anda tidak memiliki izin untuk mengedit record dengan status ini');
             }
         }
@@ -57,7 +58,6 @@ class FinancialRecordPolicy
     {
         return $user->can('Delete:FinancialRecord');
     }
-
 
     /**
      * Determine whether the user can delete any models.
