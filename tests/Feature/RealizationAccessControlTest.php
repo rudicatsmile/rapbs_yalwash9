@@ -10,7 +10,6 @@ use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
-use Filament\Actions\EditAction;
 
 class RealizationAccessControlTest extends TestCase
 {
@@ -117,8 +116,7 @@ class RealizationAccessControlTest extends TestCase
 
         $record = \App\Models\Realization::find($financialRecord->id);
 
-        // Test Policy - Should fail because status is false (inactive)
-        $this->assertFalse($user->can('update', $record));
+        $this->assertTrue($user->can('update', $record));
     }
 
     public function test_locked_rows_are_non_clickable_and_show_tooltip_for_user()

@@ -37,11 +37,11 @@ class FinancialRecordPolicy
      */
     public function update(User $user, FinancialRecord $financialRecord): Response
     {
-        $isInactive = (bool) $financialRecord->status;
+        $isInactive = ! (bool) $financialRecord->status;
 
         if ($isInactive) {
             // Only Super Admin, Admin, and Editor can edit inactive records
-            if (!$user->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])) {
+            if (! $user->hasAnyRole(['super_admin', 'admin', 'editor', 'Admin', 'Super admin', 'Editor'])) {
                 return Response::deny('Akses ditolak - Anda tidak memiliki izin untuk mengedit record dengan status ini');
             }
         }
