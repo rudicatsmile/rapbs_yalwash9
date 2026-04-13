@@ -40,9 +40,9 @@ class FinancialRecordForm
                             ->offIcon('heroicon-m-x-mark')
                             ->onColor('success')
                             ->offColor('danger')
-                            ->default(true)
-                            ->visible(fn () => auth()->user() && ! auth()->user()->hasRole('user'))
-                            ->disabled(fn () => auth()->user() && auth()->user()->hasRole('user'))
+                            ->default(false)
+                            ->dehydratedWhenHidden()
+                            ->hidden(fn () => auth()->user()?->hasRole('user') ?? false)
                             ->live()
                             ->afterStateUpdated(function (Get $get, Set $set, $state, ?\Illuminate\Database\Eloquent\Model $record = null): void {
                                 if ($record && $record->exists) {
